@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Sawab",
+    "slug": "sawab",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1D4ED8"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sawabedu"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1D4ED8"
+      },
+      "package": "com.sawabedu"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
+    "scheme": "sawab",
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
