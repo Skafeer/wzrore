@@ -1,7 +1,24 @@
 import { useState } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../store/auth.store';
 import { login, register } from '../services/auth.service';
+
+async function saveToStorage(key: string, value: string) {
+  if (Platform.OS === 'web') {
+    localStorage.setItem(key, value);
+  } else {
+    await AsyncStorage.setItem(key, value);
+  }
+}
+
+async function removeFromStorage(key: string) {
+  if (Platform.OS === 'web') {
+    localStorage.removeItem(key);
+  } else {
+    await AsyncStorage.removeItem(key);
+  }
+}
 
 export function useAuth() {
   const { setAuth, logout: storeLogout } = useAuthStore();
@@ -13,8 +30,8 @@ export function useAuth() {
     setError(null);
     try {
       const data = await login(phone, password);
-      await AsyncStorage.setItem('token', data.token);
-      await AsyncStorage.setItem('user', JSON.stringify(data.user));
+      await saveToStorage('token', data.token);
+      await saveToStorage('user', JSON.stringify(data.user));
       setAuth(data.token, data.user);
       return true;
     } catch (err: unknown) {
@@ -37,8 +54,8 @@ export function useAuth() {
     setError(null);
     try {
       const data = await register(name, phone, province, password);
-      await AsyncStorage.setItem('token', data.token);
-      await AsyncStorage.setItem('user', JSON.stringify(data.user));
+      await saveToStorage('token', data.token);
+      await saveToStorage('user', JSON.stringify(data.user));
       setAuth(data.token, data.user);
       return true;
     } catch (err: unknown) {
@@ -52,8 +69,8 @@ export function useAuth() {
   }
 
   async function handleLogout() {
-    await AsyncStorage.removeItem('token');
-    await AsyncStorage.removeItem('user');
+    await removeFromStorage('token');
+    await removeFromStorage('user');
     storeLogout();
   }
 

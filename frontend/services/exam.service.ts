@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import api from './api';
 import { Subject, Chapter, Topic, Exam, ExamSession, ExamResult, LastExam, PerformanceSummary } from '../types';
 
@@ -53,14 +54,25 @@ export async function saveAnswer(
   formData.append('questionId', questionId);
   formData.append('answerText', answerText);
 
-  if (images) {
-    images.forEach((img) => {
-      formData.append('images', {
-        uri: img.uri,
-        name: img.name,
-        type: img.type,
-      } as unknown as Blob);
-    });
+  if (images && images.length > 0) {
+    for (const img of images) {
+      if (Platform.OS === 'web') {
+        try {
+          const response = await fetch(img.uri);
+          const blob = await response.blob();
+          const file = new File([blob], img.name, { type: img.type });
+          formData.append('images', file);
+        } catch {
+          // تجاهل الصورة إذا فشل التحويل
+        }
+      } else {
+        formData.append('images', {
+          uri: img.uri,
+          name: img.name,
+          type: img.type,
+        } as unknown as Blob);
+      }
+    }
   }
 
   await api.post(`/sessions/${sessionId}/answer`, formData, {

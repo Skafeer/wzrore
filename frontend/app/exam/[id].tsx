@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useResponsive } from '../../hooks/useResponsive';
 import { Colors } from '../../constants/colors';
-import { getExams, startExam, saveAnswer, submitExam } from '../../services/exam.service';
+import { startExam, saveAnswer, submitExam } from '../../services/exam.service';
 import { useAuthStore } from '../../store/auth.store';
 import { Question } from '../../types';
 
@@ -62,7 +62,7 @@ export default function ExamScreen() {
       }, 1000);
     } catch {
       Alert.alert('خطأ', 'تعذر بدء الامتحان');
-      router.back();
+      router.replace('/(tabs)/exams' as never);
     } finally {
       setLoading(false);
     }
@@ -119,7 +119,6 @@ export default function ExamScreen() {
     if (timerRef.current) clearInterval(timerRef.current);
 
     try {
-      // حفظ كل الإجابات
       for (const q of allQuestions) {
         const answer = answers[q.id];
         if (answer?.text || answer?.images?.length) {
@@ -136,14 +135,19 @@ export default function ExamScreen() {
   }
 
   function confirmSubmit() {
-    Alert.alert(
-      'تسليم الامتحان',
-      'هل أنت متأكد من تسليم الامتحان؟',
-      [
-        { text: 'إلغاء', style: 'cancel' },
-        { text: 'تسليم', onPress: () => handleSubmit() },
-      ]
-    );
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('هل أنت متأكد من تسليم الامتحان؟');
+      if (confirmed) handleSubmit();
+    } else {
+      Alert.alert(
+        'تسليم الامتحان',
+        'هل أنت متأكد من تسليم الامتحان؟',
+        [
+          { text: 'إلغاء', style: 'cancel' },
+          { text: 'تسليم', onPress: () => handleSubmit() },
+        ]
+      );
+    }
   }
 
   if (loading) {
