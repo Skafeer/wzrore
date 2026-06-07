@@ -34,7 +34,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: false,
 }));
-app.options('*', cors());
+app.options('/{*path}', cors());
 
 // ═══ Rate Limiting ═══
 app.use(rateLimit({
