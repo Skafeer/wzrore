@@ -1,9 +1,10 @@
-const isLocal = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+const isLocal = typeof window !== 'undefined' && 
+  window.location.hostname === 'localhost';
 
 export const API_URL = isLocal
   ? 'http://localhost:3000/api'
   : 'https://wzrore-production.up.railway.app/api';
-  
+
 export const ENDPOINTS = {
   // Auth
   LOGIN: '/auth/login',
