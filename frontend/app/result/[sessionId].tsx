@@ -39,7 +39,6 @@ export default function ResultScreen() {
       );
       return;
     }
-    // TODO: implement print
   }
 
   function getScoreColor(score: number, max: number) {
@@ -95,7 +94,6 @@ export default function ResultScreen() {
           {result.examTitle}
         </Text>
 
-        {/* Circle Score */}
         <View style={[styles.circleScore, {
           width: rs(120), height: rs(120), borderRadius: rs(60),
           borderWidth: rs(8), borderColor: scoreColor, marginBottom: rs(16),
@@ -161,6 +159,15 @@ export default function ResultScreen() {
   );
 }
 
+function formatAnswer(text: string): string {
+  if (!text) return '';
+  // تحويل الأرقام المتتالية إلى أسطر منفصلة
+  return text
+    .replace(/\.\s*(\d+)\s*-\s*/g, '.\n$1- ')
+    .replace(/^(\d+)\s*-\s*/gm, '$1- ')
+    .trim();
+}
+
 function QuestionCard({
   question, index, expanded, onToggle, rs, hp,
 }: {
@@ -216,21 +223,32 @@ function QuestionCard({
             <Text style={[styles.answerSectionTitle, { fontSize: rs(13), marginBottom: rs(8) }]}>
               ✍️ إجابتك
             </Text>
-            <Text style={[styles.answerText, { fontSize: rs(14) }]}>
-              {question.studentAnswer || 'لم تكتب إجابة'}
-            </Text>
+            {question.studentAnswer ? (
+              <Text style={[styles.answerText, { fontSize: rs(14) }]}>
+                {formatAnswer(question.studentAnswer)}
+              </Text>
+            ) : (
+              <Text style={[styles.answerText, { fontSize: rs(14), color: Colors.text.disabled }]}>
+                لم تكتب إجابة نصية
+              </Text>
+            )}
             {/* Student Images */}
             {question.studentImages?.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: rs(8) }}>
-                {question.studentImages.map((img, i) => (
-                  <Image
-                    key={i}
-                    source={{ uri: img }}
-                    style={{ width: rs(80), height: rs(80), borderRadius: rs(8), marginLeft: rs(8) }}
-                    resizeMode="cover"
-                  />
-                ))}
-              </ScrollView>
+              <View style={{ marginTop: rs(10) }}>
+                <Text style={[styles.answerSectionTitle, { fontSize: rs(12), marginBottom: rs(6) }]}>
+                  📷 الصور المرفقة
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {question.studentImages.map((img, i) => (
+                    <Image
+                      key={i}
+                      source={{ uri: img }}
+                      style={{ width: rs(120), height: rs(120), borderRadius: rs(8), marginLeft: rs(8) }}
+                      resizeMode="contain"
+                    />
+                  ))}
+                </ScrollView>
+              </View>
             )}
           </View>
 
@@ -240,20 +258,22 @@ function QuestionCard({
               ✅ الإجابة النموذجية
             </Text>
             <Text style={[styles.modelText, { fontSize: rs(14) }]}>
-              {question.modelAnswer}
+              {formatAnswer(question.modelAnswer)}
             </Text>
             {/* Model Images */}
             {question.modelImages?.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: rs(8) }}>
-                {question.modelImages.map((img, i) => (
-                  <Image
-                    key={i}
-                    source={{ uri: img }}
-                    style={{ width: rs(80), height: rs(80), borderRadius: rs(8), marginLeft: rs(8) }}
-                    resizeMode="cover"
-                  />
-                ))}
-              </ScrollView>
+              <View style={{ marginTop: rs(10) }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {question.modelImages.map((img, i) => (
+                    <Image
+                      key={i}
+                      source={{ uri: img }}
+                      style={{ width: rs(120), height: rs(120), borderRadius: rs(8), marginLeft: rs(8) }}
+                      resizeMode="contain"
+                    />
+                  ))}
+                </ScrollView>
+              </View>
             )}
           </View>
 
@@ -303,11 +323,11 @@ const styles = StyleSheet.create({
   qBody: {},
   answerSection: { backgroundColor: '#F0FDF4' },
   answerSectionTitle: { color: Colors.success, fontWeight: '600' },
-  answerText: { color: Colors.text.primary, textAlign: 'right', lineHeight: 22 },
+  answerText: { color: Colors.text.primary, textAlign: 'right', lineHeight: 24 },
   modelSection: { backgroundColor: '#EFF6FF' },
   modelSectionTitle: { color: Colors.primary, fontWeight: '600' },
-  modelText: { color: Colors.text.primary, textAlign: 'right', lineHeight: 22 },
+  modelText: { color: Colors.text.primary, textAlign: 'right', lineHeight: 24 },
   feedbackSection: { backgroundColor: '#FFFBEB' },
   feedbackTitle: { color: Colors.warning, fontWeight: '600' },
-  feedbackText: { color: Colors.text.primary, textAlign: 'right', lineHeight: 22 },
+  feedbackText: { color: Colors.text.primary, textAlign: 'right', lineHeight: 24 },
 });
