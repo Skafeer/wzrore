@@ -161,10 +161,11 @@ export default function ResultScreen() {
 
 function formatAnswer(text: string): string {
   if (!text) return '';
-  // تحويل الأرقام المتتالية إلى أسطر منفصلة
+
   return text
-    .replace(/\.\s*(\d+)\s*-\s*/g, '.\n$1- ')
-    .replace(/^(\d+)\s*-\s*/gm, '$1- ')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/([.!؟])\s*(\d+\s*[-–])/g, '$1\n$2')
     .trim();
 }
 
@@ -257,9 +258,20 @@ function QuestionCard({
             <Text style={[styles.modelSectionTitle, { fontSize: rs(13), marginBottom: rs(8) }]}>
               ✅ الإجابة النموذجية
             </Text>
-            <Text style={[styles.modelText, { fontSize: rs(14) }]}>
-              {formatAnswer(question.modelAnswer)}
-            </Text>
+            <View>
+              <Text
+                selectable
+                style={[
+                  styles.modelText,
+                  {
+                    fontSize: rs(14),
+                    writingDirection: 'rtl',
+                  },
+                ]}
+              >
+                {formatAnswer(question.modelAnswer)}
+              </Text>
+            </View>
             {/* Model Images */}
             {question.modelImages?.length > 0 && (
               <View style={{ marginTop: rs(10) }}>
@@ -282,9 +294,20 @@ function QuestionCard({
             <Text style={[styles.feedbackTitle, { fontSize: rs(13), marginBottom: rs(8) }]}>
               🤖 تحليل الذكاء الاصطناعي
             </Text>
-            <Text style={[styles.feedbackText, { fontSize: rs(14) }]}>
-              {question.aiFeedback}
-            </Text>
+            <View>
+              <Text
+                selectable
+                style={[
+                  styles.feedbackText,
+                  {
+                    fontSize: rs(14),
+                    writingDirection: 'rtl',
+                  },
+                ]}
+              >
+                {formatAnswer(question.aiFeedback)}
+              </Text>
+            </View>
           </View>
         </View>
       )}
@@ -323,11 +346,29 @@ const styles = StyleSheet.create({
   qBody: {},
   answerSection: { backgroundColor: '#F0FDF4' },
   answerSectionTitle: { color: Colors.success, fontWeight: '600' },
-  answerText: { color: Colors.text.primary, textAlign: 'right', lineHeight: 24 },
+  answerText: {
+    color: Colors.text.primary,
+    textAlign: 'right',
+    lineHeight: 30,
+    writingDirection: 'rtl',
+    flexWrap: 'wrap',
+  },
   modelSection: { backgroundColor: '#EFF6FF' },
   modelSectionTitle: { color: Colors.primary, fontWeight: '600' },
-  modelText: { color: Colors.text.primary, textAlign: 'right', lineHeight: 24 },
+  modelText: {
+    color: Colors.text.primary,
+    textAlign: 'right',
+    lineHeight: 30,
+    writingDirection: 'rtl',
+    flexWrap: 'wrap',
+  },
   feedbackSection: { backgroundColor: '#FFFBEB' },
   feedbackTitle: { color: Colors.warning, fontWeight: '600' },
-  feedbackText: { color: Colors.text.primary, textAlign: 'right', lineHeight: 24 },
+  feedbackText: {
+    color: Colors.text.primary,
+    textAlign: 'right',
+    lineHeight: 30,
+    writingDirection: 'rtl',
+    flexWrap: 'wrap',
+  },
 });
