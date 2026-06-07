@@ -1,6 +1,5 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middleware/auth';
-import { adminMiddleware, requirePermission } from '../middleware/auth';
+import { authMiddleware, adminMiddleware, requirePermission } from '../middleware/auth';
 import {
   getSubjects, getChaptersBySubject, getTopicsByChapter,
   adminGetSubjects, createSubject, updateSubject, deleteSubject,
@@ -15,17 +14,20 @@ router.get('/', authMiddleware, getSubjects);
 router.get('/:subjectId/chapters', authMiddleware, getChaptersBySubject);
 router.get('/chapters/:chapterId/topics', authMiddleware, getTopicsByChapter);
 
-// Admin routes
+// Admin routes - Subjects
 router.get('/admin/all', adminMiddleware, requirePermission('subjects'), adminGetSubjects);
 router.post('/admin', adminMiddleware, requirePermission('subjects'), createSubject);
 router.put('/admin/:id', adminMiddleware, requirePermission('subjects'), updateSubject);
 router.delete('/admin/:id', adminMiddleware, requirePermission('subjects'), deleteSubject);
 
+// Admin routes - Chapters
 router.get('/admin/:subjectId/chapters', adminMiddleware, requirePermission('subjects'), adminGetChapters);
 router.post('/admin/:subjectId/chapters', adminMiddleware, requirePermission('subjects'), createChapter);
 router.put('/admin/chapters/:id', adminMiddleware, requirePermission('subjects'), updateChapter);
 router.delete('/admin/chapters/:id', adminMiddleware, requirePermission('subjects'), deleteChapter);
 
+// Admin routes - Topics
+router.get('/admin/chapters/:chapterId/topics', adminMiddleware, requirePermission('subjects'), getTopicsByChapter);
 router.post('/admin/chapters/:chapterId/topics', adminMiddleware, requirePermission('subjects'), createTopic);
 router.put('/admin/topics/:id', adminMiddleware, requirePermission('subjects'), updateTopic);
 router.delete('/admin/topics/:id', adminMiddleware, requirePermission('subjects'), deleteTopic);

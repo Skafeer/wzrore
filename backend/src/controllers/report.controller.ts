@@ -33,7 +33,7 @@ export async function adminGetReports(req: Request, res: Response): Promise<void
       where,
       orderBy: { createdAt: 'desc' },
       include: {
-        user: { select: { name: true, username: true } },
+        user: { select: { name: true, phone: true } },
         question: { select: { text: true, exam: { select: { title: true } } } },
       },
     });
