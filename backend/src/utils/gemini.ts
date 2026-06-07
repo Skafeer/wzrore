@@ -26,7 +26,7 @@ export async function gradeAnswer(params: {
 }): Promise<{ score: number; feedback: string }> {
   const { questionText, modelAnswer, studentAnswer, degree, aiNotes, modelImages } = params;
 
-  const prompt = `
+const prompt = `
 أنت مصحح امتحانات متخصص لوزارة التربية العراقية.
 مهمتك تصحيح إجابة الطالب بناءً على الإجابة النموذجية فقط، لا تستخدم أي معلومة خارجية.
 
@@ -34,11 +34,15 @@ export async function gradeAnswer(params: {
 
 الإجابة النموذجية: ${modelAnswer}
 
-إجابة الطالب: ${studentAnswer || 'لم يجب الطالب'}
+إجابة الطالب النصية: ${studentAnswer || 'لم يكتب الطالب إجابة نصية'}
+
+${modelImages && modelImages.length > 0 ? `ملاحظة: الإجابة النموذجية تحتوي على ${modelImages.length} صورة توضيحية.` : ''}
 
 الدرجة الكاملة للسؤال: ${degree}
 
 ${aiNotes ? `ملاحظات للمصحح: ${aiNotes}` : ''}
+
+${studentAnswer === '' ? 'ملاحظة: الطالب اعتمد على الصور فقط في إجابته، أعطه درجة جزئية مناسبة.' : ''}
 
 قم بتصحيح الإجابة وأعط:
 1. الدرجة المستحقة (رقم من 0 إلى ${degree})

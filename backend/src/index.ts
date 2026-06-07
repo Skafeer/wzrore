@@ -25,12 +25,16 @@ const PORT = process.env.PORT ?? 3000;
 app.set('trust proxy', 1);
 
 // ═══ Security ═══
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+}));
 app.use(cors({
   origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false,
 }));
+app.options('*', cors());
 
 // ═══ Rate Limiting ═══
 app.use(rateLimit({
