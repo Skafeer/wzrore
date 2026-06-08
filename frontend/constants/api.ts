@@ -1,7 +1,6 @@
-const isLocal = typeof window !== 'undefined' && 
-  window.location.hostname === 'localhost';
+import { Platform } from 'react-native';
 
-export const API_URL = isLocal
+export const API_URL = Platform.OS === 'web' && typeof window !== 'undefined' && window.location.hostname === 'localhost'
   ? 'http://localhost:3000/api'
   : 'https://wzrore-production.up.railway.app/api';
 
