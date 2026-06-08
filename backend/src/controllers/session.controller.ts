@@ -36,7 +36,6 @@ export async function startExam(req: AuthRequest, res: Response): Promise<void> 
       return;
     }
 
-    // التحقق من حد الامتحانات للمجاني
     const isLaunchPeriod = await checkLaunchPeriod();
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -62,7 +61,6 @@ export async function startExam(req: AuthRequest, res: Response): Promise<void> 
       }
     }
 
-    // إنشاء جلسة جديدة بـ UUID
     const session = await prisma.examSession.create({
       data: {
         userId,
@@ -72,7 +70,6 @@ export async function startExam(req: AuthRequest, res: Response): Promise<void> 
       },
     });
 
-    // تحديث streak
     await updateStudyStreak(userId);
 
     res.status(201).json({
@@ -113,7 +110,6 @@ export async function saveAnswer(req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    // رفع الصور إذا موجودة
     const answerImages: string[] = [];
     if (req.files && Array.isArray(req.files)) {
       const hasPaidSub = req.user!.plan !== null;
@@ -168,7 +164,6 @@ export async function submitExam(req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    // تصحيح كل سؤال بالذكاء الاصطناعي
     let totalScore = 0;
     const gradingResults = [];
 
@@ -184,11 +179,11 @@ export async function submitExam(req: AuthRequest, res: Response): Promise<void>
         degree: question.degree,
         aiNotes: question.aiNotes,
         modelImages: question.modelImages,
+        studentImages: studentAnswer?.answerImages ?? [],
       });
 
       totalScore += result.score;
 
-      // تحديث الإجابة بنتيجة التصحيح
       await prisma.studentAnswer.upsert({
         where: {
           sessionId_questionId: { sessionId, questionId: question.id },
@@ -211,7 +206,6 @@ export async function submitExam(req: AuthRequest, res: Response): Promise<void>
       });
     }
 
-    // تحديث الجلسة كمكتملة
     const updatedSession = await prisma.examSession.update({
       where: { id: sessionId },
       data: {
@@ -266,7 +260,6 @@ export async function getResult(req: AuthRequest, res: Response): Promise<void> 
       return;
     }
 
-    // بناء تفصيل الأسئلة
     const questionsDetail = session.exam.questions.map(q => {
       const answer = session.studentAnswers.find(a => a.questionId === q.id);
       return {
@@ -401,7 +394,7 @@ async function updateStudyStreak(userId: string): Promise<void> {
 
   const diffDays = Math.floor((today.getTime() - lastStudy.getTime()) / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return; // نفس اليوم
+  if (diffDays === 0) return;
   if (diffDays === 1) {
     await prisma.user.update({
       where: { id: userId },
