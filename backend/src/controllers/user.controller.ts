@@ -189,6 +189,54 @@ export async function adminUpdateUser(req: Request, res: Response): Promise<void
   }
 }
 
+export async function adminUpdateUserFull(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params as { id: string };
+    const { name, phone, province, password } = req.body;
+
+    // التحقق من رقم الهاتف إذا تم تغييره
+    if (phone && !/^07\d{9}$/.test(phone)) {
+      res.status(400).json({ success: false, message: 'رقم الهاتف يجب أن يبدأ بـ 07 ويكون 11 رقم' });
+      return;
+    }
+
+    // التحقق من تكرار رقم الهاتف
+    if (phone) {
+      const existing = await prisma.user.findFirst({
+        where: { phone, NOT: { id } },
+      });
+      if (existing) {
+        res.status(400).json({ success: false, message: 'رقم الهاتف مستخدم من حساب آخر' });
+        return;
+      }
+    }
+
+    const data: Record<string, unknown> = {};
+    if (name) data.name = name;
+    if (phone) data.phone = phone;
+    if (province) data.province = province;
+    if (password) data.password = await bcrypt.hash(password, 12);
+
+    const user = await prisma.user.update({
+      where: { id },
+      data,
+    });
+
+    res.json({
+      success: true,
+      message: 'تم تحديث بيانات المستخدم',
+      data: {
+        id: user.id,
+        name: user.name,
+        phone: user.phone,
+        province: user.province,
+      },
+    });
+  } catch {
+    res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
+  }
+}
+
 export async function adminDeleteUser(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params as { id: string };

@@ -59,3 +59,12 @@ export async function adminUpdateReport(req: Request, res: Response): Promise<vo
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
+export async function adminDeleteReport(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params as { id: string };
+    await prisma.report.delete({ where: { id } });
+    res.json({ success: true, message: 'تم حذف البلاغ' });
+  } catch {
+    res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
+  }
+}
