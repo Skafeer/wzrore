@@ -6,18 +6,12 @@ const prisma = new PrismaClient();
 async function main() {
   const hashed = await bcrypt.hash('Admin@123456', 12);
   
-  const admin = await prisma.admin.create({
-    data: {
-      name: 'المشرف الرئيسي',
-      username: 'superadmin',
-      email: 'admin@sawab.iq',
-      password: hashed,
-      adminRole: 'SUPER_ADMIN',
-      permissions: {},
-    },
+  const admin = await prisma.admin.update({
+    where: { email: 'admin@sawab.iq' },
+    data: { password: hashed },
   });
   
-  console.log('✅ تم إنشاء الأدمن:', admin.email);
+  console.log('✅ تم تحديث كلمة المرور:', admin.email);
 }
 
 main().catch(console.error).finally(() => prisma.$disconnect());
