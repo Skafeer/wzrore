@@ -18,11 +18,11 @@
     },
     "android": {
       "adaptiveIcon": {
-      "foregroundImage": "./assets/adaptive-icon.png",
-      "backgroundColor": "#1D4ED8"
-  },
-    "package": "com.sawabedu"
-},
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1D4ED8"
+      },
+      "package": "com.sawabedu"
+    },
     "plugins": [
       "expo-router",
       "expo-font"
@@ -36,6 +36,12 @@
       "eas": {
         "projectId": "3315321a-f55a-4318-a8c1-bd658a5f66ad"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/3315321a-f55a-4318-a8c1-bd658a5f66ad"
     }
   }
 }
