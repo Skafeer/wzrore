@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
 import { AuthRequest } from '../types';
@@ -33,7 +34,6 @@ export async function redeemCode(req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    // حساب تاريخ الانتهاء
     const startDate = new Date();
     const endDate = new Date();
 
@@ -41,13 +41,11 @@ export async function redeemCode(req: AuthRequest, res: Response): Promise<void>
     else if (subCode.plan === 'MONTHLY') endDate.setDate(endDate.getDate() + 30);
     else if (subCode.plan === 'YEARLY') endDate.setFullYear(endDate.getFullYear() + 1);
 
-    // تحديث الكود كمستخدم
     await prisma.subscriptionCode.update({
       where: { code },
       data: { isUsed: true, usedBy: userId, usedAt: new Date() },
     });
 
-    // إنشاء أو تحديث الاشتراك
     const subscription = await prisma.subscription.upsert({
       where: { userId },
       update: { plan: subCode.plan, status: 'ACTIVE', startDate, endDate },
@@ -121,7 +119,6 @@ export async function adminCreateCodes(req: Request, res: Response): Promise<voi
       const code = generateCode();
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 7);
-
       codes.push({ code, plan, expiresAt });
     }
 
@@ -132,6 +129,16 @@ export async function adminCreateCodes(req: Request, res: Response): Promise<voi
       message: `تم إنشاء ${count} كود بنجاح`,
       data: codes.map(c => c.code),
     });
+  } catch {
+    res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
+  }
+}
+
+export async function adminDeleteCode(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params as { id: string };
+    await prisma.subscriptionCode.delete({ where: { id } });
+    res.json({ success: true, message: 'تم حذف الكود' });
   } catch {
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
@@ -185,7 +192,6 @@ export async function adminSetLaunchPeriod(req: Request, res: Response): Promise
       return;
     }
 
-    // إلغاء الفترات السابقة
     await prisma.launchPeriod.updateMany({ data: { isActive: false } });
 
     const launch = await prisma.launchPeriod.create({
@@ -205,9 +211,7 @@ export async function adminSetLaunchPeriod(req: Request, res: Response): Promise
 // ═══ HELPER ═══
 
 function generateCode(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  const segment = () =>
-    Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  const segment = () => crypto.randomBytes(2).toString('hex').toUpperCase();
   return `SAWAB-${segment()}-${segment()}-${segment()}`;
 }
 

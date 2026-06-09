@@ -2,9 +2,10 @@ import { Router } from 'express';
 import { authMiddleware, adminMiddleware, requirePermission } from '../middleware/auth';
 import {
   redeemCode, getMySubscription,
-  adminGetCodes, adminCreateCodes, adminActivateSubscription,
+  adminGetCodes, adminCreateCodes, adminDeleteCode, adminActivateSubscription,
   adminGetLaunchPeriod, adminSetLaunchPeriod,
 } from '../controllers/subscription.controller';
+
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.post('/admin/codes', adminMiddleware, requirePermission('subscriptions'),
 router.post('/admin/activate', adminMiddleware, requirePermission('subscriptions'), adminActivateSubscription);
 router.get('/admin/launch', adminMiddleware, requirePermission('subscriptions'), adminGetLaunchPeriod);
 router.post('/admin/launch', adminMiddleware, requirePermission('subscriptions'), adminSetLaunchPeriod);
+router.delete('/admin/codes/:id', adminMiddleware, requirePermission('subscriptions'), adminDeleteCode);
 
 export default router;
