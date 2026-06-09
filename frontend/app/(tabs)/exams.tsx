@@ -238,9 +238,7 @@ export default function ExamsScreen() {
   }
 
   /* ─── Helpers ──────────────────────────────────── */
-  const isChapterDisabled = examType === 'WIZARI';
-  const isYearDisabled = examType === 'CHAPTER' || !examType;
-  const isRoundDisabled = !selectedYear || examType !== 'WIZARI';
+  const isRoundDisabled = !selectedYear;
 
   const getTypeLabel = (t: ExamType) => {
     if (t === 'WIZARI') return 'وزاري شامل';
@@ -328,13 +326,12 @@ export default function ExamsScreen() {
       </DropdownField>
 
       {/* ── 3. Chapter Field (فصل محدد only) ─────── */}
-      {examType && (
+      {examType === 'CHAPTER' && (
         <DropdownField
           label="الفصل"
           icon="albums-outline"
           value={selectedChapter?.name || null}
-          placeholder={isChapterDisabled ? 'غير متاح - وزاري شامل' : 'اختر الفصل'}
-          disabled={isChapterDisabled}
+          placeholder="اختر الفصل"
           isOpen={openField === 'chapter'}
           onToggle={() => toggleField('chapter')}
           rs={rs}
@@ -362,77 +359,7 @@ export default function ExamsScreen() {
         </DropdownField>
       )}
 
-      {/* ── 4. Year Field (وزاري شامل only) ──────── */}
-      {examType && (
-        <DropdownField
-          label="السنة"
-          icon="calendar-outline"
-          value={selectedYear ? `${selectedYear}` : null}
-          placeholder={isYearDisabled ? 'غير متاح - فصل محدد' : 'اختر السنة'}
-          disabled={isYearDisabled}
-          isOpen={openField === 'year'}
-          onToggle={() => toggleField('year')}
-          rs={rs}
-        >
-          {loadingYears ? (
-            <ActivityIndicator color={Colors.primary} style={{ marginVertical: rs(8) }} />
-          ) : years.length === 0 ? (
-            <Text style={[fieldStyles.emptyText, { fontSize: rs(13), padding: rs(8) }]}>
-              لا توجد سنوات متوفرة
-            </Text>
-          ) : (
-            years.map(y => (
-              <OptionItem
-                key={y}
-                label={`${y}`}
-                selected={selectedYear === y}
-                onPress={() => {
-                  setSelectedYear(y);
-                  setOpenField('round');
-                }}
-                rs={rs}
-              />
-            ))
-          )}
-        </DropdownField>
-      )}
-
-      {/* ── 5. Round Field ───────────────────────── */}
-      {examType === 'WIZARI' && (
-        <DropdownField
-          label="الدور"
-          icon="repeat-outline"
-          value={selectedRound ? `الدور ${selectedRound}` : null}
-          placeholder={isRoundDisabled ? 'اختر السنة أولاً' : 'اختر الدور'}
-          disabled={isRoundDisabled}
-          isOpen={openField === 'round'}
-          onToggle={() => toggleField('round')}
-          rs={rs}
-        >
-          {loadingRounds ? (
-            <ActivityIndicator color={Colors.primary} style={{ marginVertical: rs(8) }} />
-          ) : rounds.length === 0 ? (
-            <Text style={[fieldStyles.emptyText, { fontSize: rs(13), padding: rs(8) }]}>
-              لا توجد أدوار متوفرة
-            </Text>
-          ) : (
-            rounds.map(r => (
-              <OptionItem
-                key={r}
-                label={`الدور ${r}`}
-                selected={selectedRound === r}
-                onPress={() => {
-                  setSelectedRound(r);
-                  setOpenField(null);
-                }}
-                rs={rs}
-              />
-            ))
-          )}
-        </DropdownField>
-      )}
-
-      {/* ── 6. Topic Field (فصل محدد + chapter selected) */}
+      {/* ── 4. Topic Field (فصل محدد + chapter selected) */}
       {examType === 'CHAPTER' && selectedChapter && (
         <DropdownField
           label="الموضوع"
@@ -472,6 +399,77 @@ export default function ExamsScreen() {
           )}
         </DropdownField>
       )}
+
+      {/* ── 5. Year Field (وزاري شامل only) ──────── */}
+      {examType === 'WIZARI' && (
+        <DropdownField
+          label="السنة"
+          icon="calendar-outline"
+          value={selectedYear ? `${selectedYear}` : null}
+          placeholder="اختر السنة"
+          isOpen={openField === 'year'}
+          onToggle={() => toggleField('year')}
+          rs={rs}
+        >
+          {loadingYears ? (
+            <ActivityIndicator color={Colors.primary} style={{ marginVertical: rs(8) }} />
+          ) : years.length === 0 ? (
+            <Text style={[fieldStyles.emptyText, { fontSize: rs(13), padding: rs(8) }]}>
+              لا توجد سنوات متوفرة
+            </Text>
+          ) : (
+            years.map(y => (
+              <OptionItem
+                key={y}
+                label={`${y}`}
+                selected={selectedYear === y}
+                onPress={() => {
+                  setSelectedYear(y);
+                  setOpenField('round');
+                }}
+                rs={rs}
+              />
+            ))
+          )}
+        </DropdownField>
+      )}
+
+      {/* ── 6. Round Field (وزاري شامل only) ──────── */}
+      {examType === 'WIZARI' && (
+        <DropdownField
+          label="الدور"
+          icon="repeat-outline"
+          value={selectedRound ? `الدور ${selectedRound}` : null}
+          placeholder={isRoundDisabled ? 'اختر السنة أولاً' : 'اختر الدور'}
+          disabled={isRoundDisabled}
+          isOpen={openField === 'round'}
+          onToggle={() => toggleField('round')}
+          rs={rs}
+        >
+          {loadingRounds ? (
+            <ActivityIndicator color={Colors.primary} style={{ marginVertical: rs(8) }} />
+          ) : rounds.length === 0 ? (
+            <Text style={[fieldStyles.emptyText, { fontSize: rs(13), padding: rs(8) }]}>
+              لا توجد أدوار متوفرة
+            </Text>
+          ) : (
+            rounds.map(r => (
+              <OptionItem
+                key={r}
+                label={`الدور ${r}`}
+                selected={selectedRound === r}
+                onPress={() => {
+                  setSelectedRound(r);
+                  setOpenField(null);
+                }}
+                rs={rs}
+              />
+            ))
+          )}
+        </DropdownField>
+      )}
+
+
 
       {/* ── Exams List ───────────────────────────── */}
       {loadingExams && <ActivityIndicator color={Colors.primary} style={{ marginTop: rs(20) }} />}
