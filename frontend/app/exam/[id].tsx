@@ -12,6 +12,7 @@ import { Colors } from '../../constants/colors';
 import { startExam, saveAnswer, submitExam } from '../../services/exam.service';
 import { useAuthStore } from '../../store/auth.store';
 import { Question } from '../../types';
+import { MotionView, PressableScale } from '../../components/motion';
 
 interface AnswerData {
   text: string;
@@ -20,9 +21,8 @@ interface AnswerData {
 
 export default function ExamScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { rs, hp, wp, isTablet, contentWidth } = useResponsive();
+  const { rs, hp, pagePadding } = useResponsive();
   const user = useAuthStore((s) => s.user);
-  const paddingH = isTablet ? (wp(100) - contentWidth) / 2 : wp(5);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -177,7 +177,7 @@ export default function ExamScreen() {
   return (
     <View style={styles.container}>
       {/* Top Bar */}
-      <View style={[styles.topBar, { paddingHorizontal: paddingH, paddingTop: hp(5), paddingBottom: hp(1.5) }]}>
+      <View style={[styles.topBar, { paddingHorizontal: pagePadding, paddingTop: hp(5), paddingBottom: hp(1.5) }]}>
         <View style={[styles.timerBox, { paddingHorizontal: rs(12), paddingVertical: rs(6), borderRadius: rs(20) }]}>
           <Ionicons name="time-outline" size={rs(16)} color={timeLeft < 300 ? Colors.error : Colors.white} />
           <Text style={[styles.timerText, { fontSize: rs(15), color: timeLeft < 300 ? Colors.error : Colors.white }]}>
@@ -188,7 +188,7 @@ export default function ExamScreen() {
       </View>
 
       {/* Question Counter */}
-      <View style={[styles.counterBar, { paddingHorizontal: paddingH, paddingVertical: rs(10) }]}>
+      <View style={[styles.counterBar, { paddingHorizontal: pagePadding, paddingVertical: rs(10) }]}>
         <Text style={[styles.counterText, { fontSize: rs(13) }]}>
           سؤال {currentIndex + 1} من {questions.length}
         </Text>
@@ -198,19 +198,19 @@ export default function ExamScreen() {
       </View>
 
       {/* Progress Bar */}
-      <View style={[styles.progressBar, { marginHorizontal: paddingH }]}>
+      <View style={[styles.progressBar, { marginHorizontal: pagePadding }]}>
         <View style={[styles.progressFill, { width: `${((currentIndex + 1) / questions.length) * 100}%` }]} />
       </View>
 
       {/* Question Content */}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: paddingH, paddingVertical: rs(16) }}
+        contentContainerStyle={{ paddingHorizontal: pagePadding, paddingVertical: rs(16) }}
       >
         {/* Question Text */}
-        <View style={[styles.questionBox, { padding: rs(16), borderRadius: rs(14), marginBottom: rs(16) }]}>
+        <MotionView delay={80} style={[styles.questionBox, { padding: rs(16), borderRadius: rs(14), marginBottom: rs(16) }]}>
           <Text style={[styles.questionText, { fontSize: rs(16) }]}>{currentQuestion?.text}</Text>
-        </View>
+        </MotionView>
 
         {/* Answer Input */}
         <Text style={[styles.answerLabel, { fontSize: rs(14), marginBottom: rs(8) }]}>إجابتك</Text>
@@ -231,7 +231,7 @@ export default function ExamScreen() {
         />
 
         {/* Image Upload */}
-        <TouchableOpacity
+        <PressableScale
           style={[styles.imageBtn, { padding: rs(12), borderRadius: rs(10), marginTop: rs(12) }]}
           onPress={pickImage}
         >
@@ -244,7 +244,7 @@ export default function ExamScreen() {
               <Text style={[styles.freeBadgeText, { fontSize: rs(11) }]}>مجاني</Text>
             </View>
           )}
-        </TouchableOpacity>
+        </PressableScale>
 
         {/* Images Preview */}
         {currentAnswer.images.length > 0 && (
@@ -277,35 +277,35 @@ export default function ExamScreen() {
       </ScrollView>
 
       {/* Navigation Buttons */}
-      <View style={[styles.navBar, { paddingHorizontal: paddingH, paddingVertical: rs(12) }]}>
+      <View style={[styles.navBar, { paddingHorizontal: pagePadding, paddingVertical: rs(12) }]}>
         {!isFirst && (
-          <TouchableOpacity
+          <PressableScale
             style={[styles.navBtn, { paddingVertical: rs(12), paddingHorizontal: rs(24), borderRadius: rs(12) }]}
             onPress={() => setCurrentIndex(prev => prev - 1)}
           >
             <Ionicons name="chevron-forward" size={rs(18)} color={Colors.primary} />
             <Text style={[styles.navBtnText, { fontSize: rs(15) }]}>السابق</Text>
-          </TouchableOpacity>
+          </PressableScale>
         )}
 
         {!isFirst && <View style={{ flex: 1 }} />}
 
         {isLast ? (
-          <TouchableOpacity
+          <PressableScale
             style={[styles.submitBtn, { paddingVertical: rs(12), paddingHorizontal: rs(24), borderRadius: rs(12) }]}
             onPress={confirmSubmit}
           >
             <Text style={[styles.submitBtnText, { fontSize: rs(15) }]}>تسليم الامتحان</Text>
             <Ionicons name="checkmark-circle" size={rs(18)} color={Colors.white} />
-          </TouchableOpacity>
+          </PressableScale>
         ) : (
-          <TouchableOpacity
+          <PressableScale
             style={[styles.nextBtn, { paddingVertical: rs(12), paddingHorizontal: rs(24), borderRadius: rs(12) }]}
             onPress={() => setCurrentIndex(prev => prev + 1)}
           >
             <Text style={[styles.nextBtnText, { fontSize: rs(15) }]}>التالي</Text>
             <Ionicons name="chevron-back" size={rs(18)} color={Colors.white} />
-          </TouchableOpacity>
+          </PressableScale>
         )}
       </View>
     </View>
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
   degreeText: { color: Colors.primary, fontWeight: '600' },
   progressBar: { height: 4, backgroundColor: Colors.border, borderRadius: 2, marginBottom: 4 },
   progressFill: { height: '100%', backgroundColor: Colors.primary, borderRadius: 2 },
-  questionBox: { backgroundColor: Colors.white, elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6 },
+  questionBox: { backgroundColor: Colors.white, elevation: 2, shadowColor: Colors.shadow, shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
   questionText: { color: Colors.text.primary, lineHeight: 26, textAlign: 'right' },
   answerLabel: { color: Colors.text.secondary, fontWeight: '600' },
   answerInput: { backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border, color: Colors.text.primary },

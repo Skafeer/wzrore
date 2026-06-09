@@ -8,12 +8,12 @@ import { useAuthStore } from '../../store/auth.store';
 import { useAuth } from '../../hooks/useAuth';
 import { useResponsive } from '../../hooks/useResponsive';
 import { Colors } from '../../constants/colors';
+import { MotionView, PressableScale } from '../../components/motion';
 
 export default function AccountScreen() {
-  const { rs, hp, wp, isTablet, contentWidth } = useResponsive();
+  const { rs, hp, pagePadding } = useResponsive();
   const user = useAuthStore((s) => s.user);
   const { handleLogout } = useAuth();
-  const paddingH = isTablet ? (wp(100) - contentWidth) / 2 : wp(5);
 
   function onLogout() {
     Alert.alert('تسجيل الخروج', 'هل أنت متأكد؟', [
@@ -33,7 +33,7 @@ export default function AccountScreen() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={{ paddingHorizontal: paddingH, paddingBottom: hp(4) }}
+      contentContainerStyle={{ paddingHorizontal: pagePadding, paddingBottom: hp(4) }}
     >
       {/* Header */}
       <View style={[styles.header, { paddingTop: hp(6), paddingBottom: hp(2) }]}>
@@ -41,7 +41,7 @@ export default function AccountScreen() {
       </View>
 
       {/* Profile Card */}
-      <View style={[styles.profileCard, { padding: rs(20), marginBottom: rs(20), borderRadius: rs(16) }]}>
+      <MotionView delay={80} style={[styles.profileCard, { padding: rs(20), marginBottom: rs(20), borderRadius: rs(16) }]}>
         <View style={styles.profileRow}>
           {user?.avatar
             ? <Image source={{ uri: user.avatar }} style={[styles.avatar, { width: rs(64), height: rs(64), borderRadius: rs(32) }]} />
@@ -55,8 +55,8 @@ export default function AccountScreen() {
           }
           <View style={{ marginRight: rs(14), flex: 1 }}>
             <Text style={[styles.userName, { fontSize: rs(18) }]}>{user?.name}</Text>
-            <Text style={[styles.userUsername, { fontSize: rs(13) }]}>@{user?.username}</Text>
-            <Text style={[styles.userEmail, { fontSize: rs(12) }]}>{user?.email}</Text>
+            <Text style={[styles.userUsername, { fontSize: rs(13) }]}>{user?.phone}</Text>
+            <Text style={[styles.userEmail, { fontSize: rs(12) }]}>{user?.province}</Text>
           </View>
         </View>
 
@@ -80,12 +80,12 @@ export default function AccountScreen() {
               : 'الحساب المجاني'}
           </Text>
         </View>
-      </View>
+      </MotionView>
 
       {/* Menu */}
-      <View style={[styles.menuCard, { borderRadius: rs(16), marginBottom: rs(20) }]}>
+      <MotionView delay={150} style={[styles.menuCard, { borderRadius: rs(16), marginBottom: rs(20) }]}>
         {menuItems.map((item, index) => (
-          <TouchableOpacity
+          <PressableScale
             key={item.route}
             style={[
               styles.menuItem,
@@ -97,9 +97,9 @@ export default function AccountScreen() {
             <Ionicons name={item.icon as never} size={rs(20)} color={Colors.text.secondary} />
             <Text style={[styles.menuLabel, { fontSize: rs(15), marginRight: rs(12) }]}>{item.label}</Text>
             <Ionicons name="chevron-back" size={rs(18)} color={Colors.text.disabled} style={{ marginRight: 'auto' }} />
-          </TouchableOpacity>
+          </PressableScale>
         ))}
-      </View>
+      </MotionView>
 
       {/* Logout */}
       <TouchableOpacity
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: {},
   title: { color: Colors.text.primary, fontWeight: 'bold' },
-  profileCard: { backgroundColor: Colors.white, elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6 },
+  profileCard: { backgroundColor: Colors.white, elevation: 2, shadowColor: Colors.shadow, shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
   profileRow: { flexDirection: 'row', alignItems: 'center' },
   avatar: { resizeMode: 'cover' },
   avatarPlaceholder: { backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center' },
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   userEmail: { color: Colors.text.disabled, marginTop: 2 },
   subBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   subText: { fontWeight: '600' },
-  menuCard: { backgroundColor: Colors.white, elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6 },
+  menuCard: { backgroundColor: Colors.white, elevation: 2, shadowColor: Colors.shadow, shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, overflow: 'hidden' },
   menuItem: { flexDirection: 'row', alignItems: 'center' },
   menuItemBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
   menuLabel: { color: Colors.text.primary, flex: 1 },

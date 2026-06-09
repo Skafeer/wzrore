@@ -10,12 +10,12 @@ import { Colors } from '../../constants/colors';
 import { getResult } from '../../services/exam.service';
 import { ExamResult, QuestionResult } from '../../types';
 import { useAuthStore } from '../../store/auth.store';
+import { MotionView, PressableScale } from '../../components/motion';
 
 export default function ResultScreen() {
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
-  const { rs, hp, wp, isTablet, contentWidth } = useResponsive();
+  const { rs, hp, pagePadding, isTablet } = useResponsive();
   const user = useAuthStore((s) => s.user);
-  const paddingH = isTablet ? (wp(100) - contentWidth) / 2 : wp(5);
 
   const [result, setResult] = useState<ExamResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,7 +75,7 @@ export default function ResultScreen() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={{ paddingHorizontal: paddingH, paddingBottom: hp(4) }}
+      contentContainerStyle={{ paddingHorizontal: pagePadding, paddingBottom: hp(4) }}
     >
       {/* Header */}
       <View style={[styles.header, { paddingTop: hp(6), paddingBottom: hp(2) }]}>
@@ -89,7 +89,7 @@ export default function ResultScreen() {
       </View>
 
       {/* Score Card */}
-      <View style={[styles.scoreCard, { padding: rs(24), borderRadius: rs(20), marginBottom: rs(20) }]}>
+      <MotionView delay={80} style={[styles.scoreCard, { padding: rs(24), borderRadius: rs(20), marginBottom: rs(20) }]}>
         <Text style={[styles.examTitle, { fontSize: rs(16), marginBottom: rs(16) }]}>
           {result.examTitle}
         </Text>
@@ -115,10 +115,10 @@ export default function ResultScreen() {
         <Text style={[styles.scoreDate, { fontSize: rs(12), marginTop: rs(8) }]}>
           {new Date(result.submittedAt).toLocaleDateString('ar-IQ')}
         </Text>
-      </View>
+      </MotionView>
 
       {/* Stats */}
-      <View style={[styles.statsRow, { marginBottom: rs(20), gap: rs(12) }]}>
+      <MotionView delay={140} style={[styles.statsRow, { marginBottom: rs(20), gap: rs(12) }, !isTablet && styles.statsRowMobile]}>
         <View style={[styles.statCard, { padding: rs(16), borderRadius: rs(14) }]}>
           <Text style={[styles.statNum, { fontSize: rs(22), color: Colors.success }]}>
             {result.questions.filter(q => q.aiScore >= q.degree * 0.5).length}
@@ -137,7 +137,7 @@ export default function ResultScreen() {
           </Text>
           <Text style={[styles.statLabel, { fontSize: rs(12) }]}>عدد الأسئلة</Text>
         </View>
-      </View>
+      </MotionView>
 
       {/* Questions Detail */}
       <Text style={[styles.sectionTitle, { fontSize: rs(16), marginBottom: rs(12) }]}>
@@ -183,10 +183,9 @@ function QuestionCard({
   const scoreColor = scorePct >= 80 ? Colors.success : scorePct >= 50 ? Colors.warning : Colors.error;
 
   return (
-    <TouchableOpacity
+    <PressableScale
       style={[styles.questionCard, { borderRadius: rs(14), marginBottom: rs(12) }]}
       onPress={onToggle}
-      activeOpacity={0.9}
     >
       {/* Question Header */}
       <View style={[styles.qHeader, { padding: rs(14) }]}>
@@ -311,7 +310,7 @@ function QuestionCard({
           </View>
         </View>
       )}
-    </TouchableOpacity>
+    </PressableScale>
   );
 }
 
@@ -322,7 +321,7 @@ const styles = StyleSheet.create({
   errorText: { color: Colors.error },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerTitle: { color: Colors.text.primary, fontWeight: 'bold' },
-  scoreCard: { backgroundColor: Colors.white, alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8 },
+  scoreCard: { backgroundColor: Colors.white, alignItems: 'center', elevation: 3, shadowColor: Colors.shadow, shadowOpacity: 0.08, shadowRadius: 14, shadowOffset: { width: 0, height: 8 } },
   examTitle: { color: Colors.text.secondary, textAlign: 'center' },
   circleScore: { justifyContent: 'center', alignItems: 'center' },
   scoreNum: { fontWeight: 'bold' },
@@ -331,11 +330,12 @@ const styles = StyleSheet.create({
   scoreLabel: { color: Colors.text.secondary },
   scoreDate: { color: Colors.text.disabled },
   statsRow: { flexDirection: 'row' },
-  statCard: { flex: 1, backgroundColor: Colors.white, alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6 },
+  statsRowMobile: { flexDirection: 'column' },
+  statCard: { flex: 1, backgroundColor: Colors.white, alignItems: 'center', elevation: 2, shadowColor: Colors.shadow, shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
   statNum: { fontWeight: 'bold' },
   statLabel: { color: Colors.text.secondary, marginTop: 4, textAlign: 'center' },
   sectionTitle: { color: Colors.text.primary, fontWeight: 'bold' },
-  questionCard: { backgroundColor: Colors.white, elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, overflow: 'hidden' },
+  questionCard: { backgroundColor: Colors.white, elevation: 2, shadowColor: Colors.shadow, shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, overflow: 'hidden' },
   qHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   qHeaderLeft: { flexDirection: 'row', alignItems: 'flex-start', flex: 1 },
   qHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },

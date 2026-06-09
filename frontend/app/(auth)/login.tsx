@@ -8,10 +8,12 @@ import { router } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { useResponsive } from '../../hooks/useResponsive';
 import { Colors } from '../../constants/colors';
+import { MotionView, PressableScale } from '../../components/motion';
 
 export default function LoginScreen() {
-  const { rs, wp, hp, isTablet, contentWidth } = useResponsive();
+  const { rs, hp, pagePadding, contentWidth } = useResponsive();
   const { handleLogin, loading, error } = useAuth();
+  const formWidth = Math.min(contentWidth, 460);
 
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -29,7 +31,7 @@ export default function LoginScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
-          { paddingHorizontal: isTablet ? (wp(100) - contentWidth) / 2 : wp(6) },
+          { paddingHorizontal: pagePadding },
         ]}
         keyboardShouldPersistTaps="handled"
       >
@@ -40,7 +42,7 @@ export default function LoginScreen() {
         </View>
 
         {/* Form */}
-        <View style={[styles.form, { width: contentWidth, padding: rs(24) }]}>
+        <MotionView delay={80} style={[styles.form, { width: formWidth, padding: rs(24) }]}>
           <Text style={[styles.title, { fontSize: rs(24) }]}>تسجيل الدخول</Text>
 
           {error && (
@@ -74,7 +76,7 @@ export default function LoginScreen() {
             textAlign="right"
           />
 
-          <TouchableOpacity
+          <PressableScale
             style={[styles.btn, { height: hp(6.5), borderRadius: rs(12), marginTop: rs(8) }]}
             onPress={onLogin}
             disabled={loading}
@@ -83,14 +85,14 @@ export default function LoginScreen() {
               ? <ActivityIndicator color={Colors.white} />
               : <Text style={[styles.btnText, { fontSize: rs(16) }]}>دخول</Text>
             }
-          </TouchableOpacity>
+          </PressableScale>
 
           <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
             <Text style={[styles.link, { fontSize: rs(14) }]}>
               ما عندك حساب؟ <Text style={styles.linkBold}>سجّل الآن</Text>
             </Text>
           </TouchableOpacity>
-        </View>
+        </MotionView>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -102,7 +104,7 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', marginBottom: 32 },
   logo: { color: Colors.secondary, fontWeight: 'bold', letterSpacing: 2 },
   tagline: { color: Colors.white, opacity: 0.8, marginTop: 4 },
-  form: { backgroundColor: Colors.white, borderRadius: 20, alignSelf: 'center' },
+  form: { backgroundColor: Colors.white, borderRadius: 20, alignSelf: 'center', elevation: 4, shadowColor: Colors.shadow, shadowOpacity: 0.12, shadowRadius: 18, shadowOffset: { width: 0, height: 10 } },
   title: { color: Colors.text.primary, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
   errorBox: { backgroundColor: '#FEE2E2', borderRadius: 8, padding: 12, marginBottom: 12 },
   errorText: { color: Colors.error, textAlign: 'center' },

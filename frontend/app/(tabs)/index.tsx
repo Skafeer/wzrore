@@ -10,9 +10,10 @@ import { getLastExam, getPerformance } from '../../services/exam.service';
 import { useResponsive } from '../../hooks/useResponsive';
 import { Colors } from '../../constants/colors';
 import { LastExam, PerformanceSummary } from '../../types';
+import { MotionView, PressableScale } from '../../components/motion';
 
 export default function HomeScreen() {
-  const { rs, hp, isTablet, contentWidth, wp } = useResponsive();
+  const { rs, hp, pagePadding } = useResponsive();
   const user = useAuthStore((s) => s.user);
 
   const [lastExam, setLastExam] = useState<LastExam | null>(null);
@@ -34,8 +35,6 @@ export default function HomeScreen() {
 
   useEffect(() => { loadData(); }, []);
 
-  const paddingH = isTablet ? (wp(100) - contentWidth) / 2 : wp(5);
-
   if (loading) {
     return (
       <View style={styles.center}>
@@ -47,7 +46,7 @@ export default function HomeScreen() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={{ paddingHorizontal: paddingH, paddingBottom: hp(4) }}
+      contentContainerStyle={{ paddingHorizontal: pagePadding, paddingBottom: hp(4) }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} />}
     >
       {/* Header */}
@@ -63,7 +62,7 @@ export default function HomeScreen() {
       </View>
 
       {/* Study Streak */}
-      <View style={[styles.streakCard, { padding: rs(16), marginBottom: rs(16) }]}>
+      <MotionView delay={80} style={[styles.streakCard, { padding: rs(16), marginBottom: rs(16) }]}>
         <View style={styles.streakRow}>
           <Text style={[styles.streakEmoji, { fontSize: rs(28) }]}>🔥</Text>
           <View style={{ marginRight: rs(12) }}>
@@ -76,10 +75,10 @@ export default function HomeScreen() {
             ? `رائع! حافظ على سلسلتك 💪`
             : 'ابدأ سلسلتك اليوم!'}
         </Text>
-      </View>
+      </MotionView>
 
       {/* Start Exam Card */}
-      <TouchableOpacity
+      <PressableScale
         style={[styles.startCard, { padding: rs(20), marginBottom: rs(16) }]}
         onPress={() => router.push('/(tabs)/exams')}
       >
@@ -95,11 +94,11 @@ export default function HomeScreen() {
         <View style={[styles.startBtn, { paddingVertical: rs(10), marginTop: rs(14), borderRadius: rs(10) }]}>
           <Text style={[styles.startBtnText, { fontSize: rs(15) }]}>ابدأ الآن</Text>
         </View>
-      </TouchableOpacity>
+      </PressableScale>
 
       {/* Last Exam */}
       {lastExam && (
-        <View style={[styles.card, { padding: rs(16), marginBottom: rs(16) }]}>
+        <MotionView delay={160} style={[styles.card, { padding: rs(16), marginBottom: rs(16) }]}>
           <Text style={[styles.cardTitle, { fontSize: rs(15), marginBottom: rs(12) }]}>آخر اختبار</Text>
           <View style={styles.lastExamRow}>
             <View style={{ flex: 1 }}>
@@ -122,12 +121,12 @@ export default function HomeScreen() {
           >
             <Text style={[styles.viewBtnText, { fontSize: rs(13) }]}>عرض النتيجة</Text>
           </TouchableOpacity>
-        </View>
+        </MotionView>
       )}
 
       {/* Performance */}
       {performance && (
-        <View style={[styles.card, { padding: rs(16) }]}>
+        <MotionView delay={220} style={[styles.card, { padding: rs(16) }]}>
           <Text style={[styles.cardTitle, { fontSize: rs(15), marginBottom: rs(12) }]}>ملخص الأداء</Text>
           <View style={styles.perfRow}>
             <View style={[styles.perfItem, { padding: rs(16), borderRadius: rs(12) }]}>
@@ -139,7 +138,7 @@ export default function HomeScreen() {
               <Text style={[styles.perfLabel, { fontSize: rs(12) }]}>متوسط الدرجات</Text>
             </View>
           </View>
-        </View>
+        </MotionView>
       )}
     </ScrollView>
   );
@@ -152,21 +151,21 @@ const styles = StyleSheet.create({
   welcome: { color: Colors.text.secondary },
   name: { color: Colors.text.primary, fontWeight: 'bold' },
   motivate: { color: Colors.text.secondary, marginTop: 2 },
-  avatarBox: { backgroundColor: Colors.border, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
-  streakCard: { backgroundColor: Colors.primary, borderRadius: 16 },
+  avatarBox: { backgroundColor: Colors.primarySoft, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
+  streakCard: { backgroundColor: Colors.primaryDark, borderRadius: 16 },
   streakRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   streakEmoji: {},
   streakNum: { color: Colors.secondary, fontWeight: 'bold' },
   streakLabel: { color: Colors.white, opacity: 0.8 },
   streakMsg: { color: Colors.white },
-  startCard: { backgroundColor: Colors.white, borderRadius: 16, elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8 },
+  startCard: { backgroundColor: Colors.white, borderRadius: 16, elevation: 3, shadowColor: Colors.shadow, shadowOpacity: 0.08, shadowRadius: 14, shadowOffset: { width: 0, height: 8 } },
   startRow: { flexDirection: 'row', alignItems: 'center' },
   startTitle: { color: Colors.text.primary, fontWeight: 'bold' },
   startDesc: { color: Colors.text.secondary, marginTop: 4 },
-  startIcon: { backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center' },
+  startIcon: { backgroundColor: Colors.primarySoft, justifyContent: 'center', alignItems: 'center' },
   startBtn: { backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center' },
   startBtnText: { color: Colors.white, fontWeight: 'bold' },
-  card: { backgroundColor: Colors.white, borderRadius: 16, elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6 },
+  card: { backgroundColor: Colors.white, borderRadius: 16, elevation: 2, shadowColor: Colors.shadow, shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
   cardTitle: { color: Colors.text.primary, fontWeight: 'bold' },
   lastExamRow: { flexDirection: 'row', alignItems: 'center' },
   lastExamSubject: { color: Colors.text.primary, fontWeight: 'bold' },

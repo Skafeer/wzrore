@@ -12,12 +12,12 @@ import {
   getAvailableYears, getAvailableRounds, getExams,
 } from '../../services/exam.service';
 import { Subject, Chapter, Topic, Exam } from '../../types';
+import { MotionView, PressableScale } from '../../components/motion';
 
 type ExamType = 'WIZARI' | 'CHAPTER' | null;
 
 export default function ExamsScreen() {
-  const { rs, hp, wp, isTablet, contentWidth } = useResponsive();
-  const paddingH = isTablet ? (wp(100) - contentWidth) / 2 : wp(5);
+  const { rs, hp, pagePadding } = useResponsive();
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -104,7 +104,7 @@ export default function ExamsScreen() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={{ paddingHorizontal: paddingH, paddingBottom: hp(4) }}
+      contentContainerStyle={{ paddingHorizontal: pagePadding, paddingBottom: hp(4) }}
     >
       {/* Header */}
       <View style={[styles.header, { paddingTop: hp(6), paddingBottom: hp(2) }]}>
@@ -287,9 +287,9 @@ export default function ExamsScreen() {
       {exams.length > 0 && (
         <>
           <Text style={[styles.label, { fontSize: rs(14) }]}>الامتحانات المتوفرة</Text>
-          {exams.map(exam => (
-            <TouchableOpacity
-              key={exam.id}
+          {exams.map((exam, index) => (
+            <MotionView key={exam.id} delay={index * 45}>
+              <PressableScale
               style={[styles.examCard, { padding: rs(16), marginBottom: rs(12), borderRadius: rs(14) }]}
               onPress={() => router.push(`/exam/${exam.id}` as never)}
             >
@@ -302,7 +302,8 @@ export default function ExamsScreen() {
                 </View>
                 <Ionicons name="chevron-back" size={rs(20)} color={Colors.text.secondary} />
               </View>
-            </TouchableOpacity>
+              </PressableScale>
+            </MotionView>
           ))}
         </>
       )}
@@ -323,16 +324,16 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { color: Colors.text.primary, fontWeight: 'bold' },
   label: { color: Colors.text.secondary, fontWeight: '600', marginBottom: 8 },
-  chip: { backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border },
+  chip: { backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border, minHeight: 40, justifyContent: 'center' },
   chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   chipText: { color: Colors.text.primary, fontWeight: '500' },
   chipTextActive: { color: Colors.white },
   typeRow: { flexDirection: 'row', gap: 12 },
-  typeBtn: { flex: 1, backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center' },
+  typeBtn: { flex: 1, backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center', minHeight: 46, justifyContent: 'center' },
   typeBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   typeBtnText: { color: Colors.text.primary, fontWeight: '600' },
   typeBtnTextActive: { color: Colors.white },
-  examCard: { backgroundColor: Colors.white, elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6 },
+  examCard: { backgroundColor: Colors.white, elevation: 2, shadowColor: Colors.shadow, shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
   examRow: { flexDirection: 'row', alignItems: 'center' },
   examTitle: { color: Colors.text.primary, fontWeight: '600' },
   examMeta: { color: Colors.text.secondary, marginTop: 4 },
