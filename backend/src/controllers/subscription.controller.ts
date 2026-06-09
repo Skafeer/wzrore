@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
 import { AuthRequest } from '../types';
+import { encrypt, decrypt } from '../utils/encryption';
 
 // ═══ STUDENT ═══
 
@@ -15,8 +16,10 @@ export async function redeemCode(req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
+    const encryptedCode = encrypt(code.trim().toUpperCase());
+
     const subCode = await prisma.subscriptionCode.findUnique({
-      where: { code },
+      where: { code: encryptedCode },
     });
 
     if (!subCode) {
@@ -42,7 +45,7 @@ export async function redeemCode(req: AuthRequest, res: Response): Promise<void>
     else if (subCode.plan === 'YEARLY') endDate.setFullYear(endDate.getFullYear() + 1);
 
     await prisma.subscriptionCode.update({
-      where: { code },
+      where: { code: encryptedCode },
       data: { isUsed: true, usedBy: userId, usedAt: new Date() },
     });
 
@@ -99,7 +102,13 @@ export async function adminGetCodes(req: Request, res: Response): Promise<void> 
       orderBy: { createdAt: 'desc' },
     });
 
-    res.json({ success: true, data: codes });
+    res.json({
+      success: true,
+      data: codes.map(c => ({
+        ...c,
+        code: decrypt(c.code),
+      })),
+    });
   } catch {
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
@@ -114,12 +123,16 @@ export async function adminCreateCodes(req: Request, res: Response): Promise<voi
       return;
     }
 
+    const plainCodes: string[] = [];
     const codes = [];
+
     for (let i = 0; i < parseInt(count); i++) {
-      const code = generateCode();
+      const plainCode = generateCode();
+      const encryptedCode = encrypt(plainCode);
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 7);
-      codes.push({ code, plan, expiresAt });
+      plainCodes.push(plainCode);
+      codes.push({ code: encryptedCode, plan, expiresAt });
     }
 
     await prisma.subscriptionCode.createMany({ data: codes });
@@ -127,7 +140,7 @@ export async function adminCreateCodes(req: Request, res: Response): Promise<voi
     res.status(201).json({
       success: true,
       message: `تم إنشاء ${count} كود بنجاح`,
-      data: codes.map(c => c.code),
+      data: plainCodes,
     });
   } catch {
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
