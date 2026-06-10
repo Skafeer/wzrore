@@ -2,9 +2,10 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../store/auth.store';
+import api from '../services/api';
 
 export function useStoredAuth() {
-  const { setAuth } = useAuthStore();
+  const { setAuth, logout } = useAuthStore();
 
   useEffect(() => {
     async function loadAuth() {
@@ -23,6 +24,24 @@ export function useStoredAuth() {
         if (token && userStr) {
           const user = JSON.parse(userStr);
           setAuth(token, user);
+
+          // جلب البيانات المحدثة من السيرفر
+          try {
+            const res = await api.get('/users/profile', {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const updatedUser = res.data.data;
+
+            if (Platform.OS === 'web') {
+              localStorage.setItem('user', JSON.stringify(updatedUser));
+            } else {
+              await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+            }
+
+            setAuth(token, updatedUser);
+          } catch {
+            // إذا فشل الجلب استخدم البيانات المحفوظة
+          }
         }
       } catch {
         if (Platform.OS === 'web') {
