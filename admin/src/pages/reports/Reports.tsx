@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { getReports, updateReport } from '../../services/user.service';
+import api from '../../utils/api';
 import type { Report } from '../../types';
-import { Flag, CheckCircle, Eye } from 'lucide-react';
+import { Flag, CheckCircle, Eye, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function ReportsPage() {
@@ -27,6 +28,18 @@ export default function ReportsPage() {
       await updateReport(id, status);
       await loadReports();
       toast.success('تم تحديث حالة البلاغ');
+      setSelectedReport(null);
+    } catch {
+      toast.error('حدث خطأ');
+    }
+  }
+
+  async function handleDeleteReport(id: string) {
+    if (!confirm('هل أنت متأكد من حذف هذا البلاغ؟')) return;
+    try {
+      await api.delete(`/users/admin/reports/${id}`);
+      await loadReports();
+      toast.success('تم حذف البلاغ');
       setSelectedReport(null);
     } catch {
       toast.error('حدث خطأ');
@@ -115,12 +128,22 @@ export default function ReportsPage() {
                     {new Date(report.createdAt).toLocaleDateString('ar-IQ')}
                   </td>
                   <td className="px-6 py-4">
-                    <button
-                      onClick={() => setSelectedReport(report)}
-                      className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg"
-                    >
-                      <Eye size={16} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setSelectedReport(report)}
+                        className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg"
+                        title="عرض التفاصيل"
+                      >
+                        <Eye size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteReport(report.id)}
+                        className="p-2 hover:bg-red-50 text-red-600 rounded-lg"
+                        title="حذف البلاغ"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -167,12 +190,21 @@ export default function ReportsPage() {
               ))}
             </div>
 
-            <button
-              onClick={() => setSelectedReport(null)}
-              className="w-full bg-gray-100 text-gray-700 py-2.5 rounded-xl font-medium hover:bg-gray-200"
-            >
-              إغلاق
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleDeleteReport(selectedReport.id)}
+                className="flex-1 bg-red-50 text-red-600 py-2.5 rounded-xl font-medium hover:bg-red-100"
+              >
+                <Trash2 size={16} className="inline ml-1" />
+                حذف البلاغ
+              </button>
+              <button
+                onClick={() => setSelectedReport(null)}
+                className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-medium hover:bg-gray-200"
+              >
+                إغلاق
+              </button>
+            </div>
           </div>
         </div>
       )}
