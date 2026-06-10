@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react';
 import { getUsers, deleteUser, activateSubscription } from '../../services/user.service';
+import api from '../../utils/api';
 import type { User } from '../../types';
-import { Search, Trash2, CreditCard, Users, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Search, Trash2, CreditCard, Users, ChevronRight, ChevronLeft, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+const PROVINCES = [
+  'بغداد', 'البصرة', 'نينوى', 'أربيل', 'النجف',
+  'كربلاء', 'الأنبار', 'ديالى', 'صلاح الدين', 'بابل',
+  'واسط', 'ميسان', 'ذي قار', 'المثنى', 'القادسية',
+  'كركوك', 'السليمانية', 'دهوك',
+];
 
 export default function StudentsPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -13,8 +21,13 @@ export default function StudentsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [showSubModal, setShowSubModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedPlan, setSelectedPlan] = useState('MONTHLY');
+
+  const [editForm, setEditForm] = useState({
+    name: '', phone: '', province: '', password: '',
+  });
 
   useEffect(() => { loadUsers(); }, [search, filter, page]);
 
@@ -32,6 +45,29 @@ export default function StudentsPage() {
       setTotal(res.pagination.total);
     } finally {
       setLoading(false);
+    }
+  }
+
+  function openEdit(user: User) {
+    setSelectedUser(user);
+    setEditForm({
+      name: user.name,
+      phone: user.phone,
+      province: user.province,
+      password: '',
+    });
+    setShowEditModal(true);
+  }
+
+  async function handleEdit() {
+    if (!selectedUser) return;
+    try {
+      await api.put(`/users/admin/users/${selectedUser.id}/full`, editForm);
+      await loadUsers();
+      toast.success('تم تحديث بيانات الطالب');
+      setShowEditModal(false);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? 'حدث خطأ');
     }
   }
 
@@ -156,6 +192,13 @@ export default function StudentsPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <button
+                          onClick={() => openEdit(user)}
+                          className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg"
+                          title="تعديل البيانات"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
                           onClick={() => { setSelectedUser(user); setShowSubModal(true); }}
                           className="p-2 hover:bg-green-50 text-green-600 rounded-lg"
                           title="تفعيل اشتراك"
@@ -199,6 +242,75 @@ export default function StudentsPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">تعديل بيانات الطالب</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">الاسم</label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">رقم الهاتف</label>
+                <input
+                  type="text"
+                  value={editForm.phone}
+                  onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))}
+                  maxLength={11}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">المحافظة</label>
+                <select
+                  value={editForm.province}
+                  onChange={e => setEditForm(p => ({ ...p, province: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {PROVINCES.map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  كلمة المرور الجديدة
+                  <span className="text-gray-400 text-xs mr-1">(اتركها فارغة إذا لا تريد تغييرها)</span>
+                </label>
+                <input
+                  type="password"
+                  value={editForm.password}
+                  onChange={e => setEditForm(p => ({ ...p, password: e.target.value }))}
+                  placeholder="••••••••"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleEdit}
+                className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl font-medium hover:bg-blue-700"
+              >
+                حفظ
+              </button>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-medium hover:bg-gray-200"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Subscription Modal */}
