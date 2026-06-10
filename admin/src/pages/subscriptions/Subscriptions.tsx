@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import {
   getCodes, createCodes, getLaunchPeriod, setLaunchPeriod,
 } from '../../services/user.service';
+import api from '../../utils/api';
 import type { SubscriptionCode } from '../../types';
-import { Plus, Copy, Check, Calendar } from 'lucide-react';
+import { Plus, Copy, Check, Calendar, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function SubscriptionsPage() {
@@ -41,6 +42,17 @@ export default function SubscriptionsPage() {
       setNewCodes(created);
       await loadData();
       toast.success(`تم إنشاء ${createForm.count} كود`);
+    } catch {
+      toast.error('حدث خطأ');
+    }
+  }
+
+  async function handleDeleteCode(id: string) {
+    if (!confirm('هل أنت متأكد من حذف هذا الكود؟')) return;
+    try {
+      await api.delete(`/subscriptions/admin/codes/${id}`);
+      await loadData();
+      toast.success('تم حذف الكود');
     } catch {
       toast.error('حدث خطأ');
     }
@@ -161,7 +173,7 @@ export default function SubscriptionsPage() {
                 <th className="text-right px-6 py-4 font-medium text-gray-600">الباقة</th>
                 <th className="text-right px-6 py-4 font-medium text-gray-600">الحالة</th>
                 <th className="text-right px-6 py-4 font-medium text-gray-600">تاريخ الانتهاء</th>
-                <th className="text-right px-6 py-4 font-medium text-gray-600">نسخ</th>
+                <th className="text-right px-6 py-4 font-medium text-gray-600">الإجراءات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -184,14 +196,24 @@ export default function SubscriptionsPage() {
                     {new Date(code.expiresAt).toLocaleDateString('ar-IQ')}
                   </td>
                   <td className="px-6 py-4">
-                    {!code.isUsed && (
+                    <div className="flex items-center gap-2">
+                      {!code.isUsed && (
+                        <button
+                          onClick={() => copyCode(code.code)}
+                          className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg"
+                          title="نسخ الكود"
+                        >
+                          {copiedId === code.code ? <Check size={16} /> : <Copy size={16} />}
+                        </button>
+                      )}
                       <button
-                        onClick={() => copyCode(code.code)}
-                        className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg"
+                        onClick={() => handleDeleteCode(code.id)}
+                        className="p-2 hover:bg-red-50 text-red-600 rounded-lg"
+                        title="حذف الكود"
                       >
-                        {copiedId === code.code ? <Check size={16} /> : <Copy size={16} />}
+                        <Trash2 size={16} />
                       </button>
-                    )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -205,7 +227,6 @@ export default function SubscriptionsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md">
             <h2 className="text-lg font-bold text-gray-900 mb-4">إنشاء أكواد اشتراك</h2>
-
             {newCodes.length > 0 ? (
               <div>
                 <p className="text-sm text-gray-600 mb-3">تم إنشاء {newCodes.length} كود:</p>
