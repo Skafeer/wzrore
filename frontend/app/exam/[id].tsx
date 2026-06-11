@@ -60,9 +60,42 @@ export default function ExamScreen() {
           return prev - 1;
         });
       }, 1000);
-    } catch {
-      Alert.alert('خطأ', 'تعذر بدء الامتحان');
-      router.replace('/(tabs)/exams' as never);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string; requiresSubscription?: boolean; nextRenewal?: string } } };
+      const data = error?.response?.data;
+
+      if (data?.requiresSubscription) {
+        const nextRenewal = data.nextRenewal
+          ? new Date(data.nextRenewal).toLocaleDateString('ar-IQ')
+          : '';
+
+        if (Platform.OS === 'web') {
+          const goSub = window.confirm(
+            `${data.message}\n\nهل تريد الاشتراك الآن؟`
+          );
+          if (goSub) router.replace('/profile/subscription' as never);
+          else router.replace('/(tabs)/exams' as never);
+        } else {
+          Alert.alert(
+            '🔒 انتهت امتحاناتك المجانية',
+            `${data.message}${nextRenewal ? `\n\n📅 تاريخ التجديد: ${nextRenewal}` : ''}`,
+            [
+              {
+                text: '⭐ اشترك الآن',
+                onPress: () => router.replace('/profile/subscription' as never),
+              },
+              {
+                text: 'لاحقاً',
+                style: 'cancel',
+                onPress: () => router.replace('/(tabs)/exams' as never),
+              },
+            ]
+          );
+        }
+      } else {
+        Alert.alert('خطأ', 'تعذر بدء الامتحان');
+        router.replace('/(tabs)/exams' as never);
+      }
     } finally {
       setLoading(false);
     }
