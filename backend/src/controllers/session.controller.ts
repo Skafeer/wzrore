@@ -47,15 +47,34 @@ export async function startExam(req: AuthRequest, res: Response): Promise<void> 
 
     if (!isLaunchPeriod && !hasPaidSub) {
       const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const registrationDate = new Date(user!.createdAt);
+
+      // حساب بداية الدورة الحالية من تاريخ التسجيل
+      const dayOfRegistration = registrationDate.getDate();
+      let cycleStart = new Date(now.getFullYear(), now.getMonth(), dayOfRegistration);
+
+      // إذا لم يحن يوم التجديد بعد هذا الشهر، نرجع للشهر الماضي
+      if (cycleStart > now) {
+        cycleStart = new Date(now.getFullYear(), now.getMonth() - 1, dayOfRegistration);
+      }
+
+      // العد من بداية الجلسة (مو التسليم) — يمنع الاستغلال
       const examCount = await prisma.examSession.count({
-        where: { userId, createdAt: { gte: startOfMonth }, isCompleted: true },
+        where: {
+          userId,
+          createdAt: { gte: cycleStart },
+        },
       });
+
       if (examCount >= 5) {
+        // حساب تاريخ التجديد القادم
+        const nextRenewal = new Date(now.getFullYear(), now.getMonth() + (cycleStart <= now ? 1 : 0), dayOfRegistration);
+
         res.status(403).json({
           success: false,
-          message: 'وصلت للحد الأقصى للامتحانات المجانية هذا الشهر (5 امتحانات)',
+          message: `وصلت للحد الأقصى للامتحانات المجانية (5 امتحانات). يتجدد العداد يوم ${nextRenewal.toLocaleDateString('ar-IQ')}`,
           requiresSubscription: true,
+          nextRenewal: nextRenewal.toISOString(),
         });
         return;
       }
