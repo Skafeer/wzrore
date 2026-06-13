@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN     "bestStreak" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "streakFreeze" INTEGER NOT NULL DEFAULT 1;
