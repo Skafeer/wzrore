@@ -234,6 +234,9 @@ export async function submitExam(req: AuthRequest, res: Response): Promise<void>
       },
     });
 
+    // تحديث سلسلة الدراسة بعد إكمال الامتحان
+    const streakResult = await updateStudyStreak(userId);
+
     res.json({
       success: true,
       data: {
@@ -241,6 +244,12 @@ export async function submitExam(req: AuthRequest, res: Response): Promise<void>
         totalScore,
         maxScore: updatedSession.maxScore,
         gradingResults,
+        streak: {
+          current: streakResult.newStreak,
+          best: streakResult.bestStreak,
+          isNewBest: streakResult.isNewBest,
+          alreadyCompletedToday: streakResult.alreadyCompletedToday,
+        },
       },
     });
   } catch {
@@ -393,9 +402,14 @@ async function checkLaunchPeriod(): Promise<boolean> {
   return !!launch;
 }
 
-async function updateStudyStreak(userId: string): Promise<void> {
+async function updateStudyStreak(userId: string): Promise<{ 
+  newStreak: number; 
+  bestStreak: number; 
+  isNewBest: boolean;
+  alreadyCompletedToday: boolean;
+}> {
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) return;
+  if (!user) return { newStreak: 0, bestStreak: 0, isNewBest: false, alreadyCompletedToday: false };
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -403,26 +417,51 @@ async function updateStudyStreak(userId: string): Promise<void> {
     ? new Date(user.lastStudyDate.getFullYear(), user.lastStudyDate.getMonth(), user.lastStudyDate.getDate())
     : null;
 
-  if (!lastStudy) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { studyStreak: 1, lastStudyDate: now },
-    });
-    return;
+  // إذا أكمل امتحان اليوم مسبقاً — لا تزيد
+  if (lastStudy && lastStudy.getTime() === today.getTime()) {
+    return { 
+      newStreak: user.studyStreak, 
+      bestStreak: user.bestStreak, 
+      isNewBest: false,
+      alreadyCompletedToday: true,
+    };
   }
 
-  const diffDays = Math.floor((today.getTime() - lastStudy.getTime()) / (1000 * 60 * 60 * 24));
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
 
-  if (diffDays === 0) return;
-  if (diffDays === 1) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { studyStreak: { increment: 1 }, lastStudyDate: now },
-    });
-  } else {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { studyStreak: 1, lastStudyDate: now },
-    });
+  let newStreak = 1;
+
+  if (lastStudy) {
+    const diffDays = Math.floor((today.getTime() - lastStudy.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) {
+      // أكمل بالأمس — زد السلسلة
+      newStreak = user.studyStreak + 1;
+    } else if (diffDays === 2 && user.streakFreeze > 0) {
+      // فاته يوم — استخدم Freeze
+      newStreak = user.studyStreak + 1;
+      await prisma.user.update({
+        where: { id: userId },
+        data: { streakFreeze: user.streakFreeze - 1 },
+      });
+    } else if (diffDays > 1) {
+      // فاته أكثر من يوم — تصفير
+      newStreak = 1;
+    }
   }
+
+  const newBestStreak = Math.max(newStreak, user.bestStreak);
+  const isNewBest = newStreak > user.bestStreak;
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { 
+      studyStreak: newStreak, 
+      bestStreak: newBestStreak,
+      lastStudyDate: now,
+    },
+  });
+
+  return { newStreak, bestStreak: newBestStreak, isNewBest, alreadyCompletedToday: false };
 }
