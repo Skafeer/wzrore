@@ -103,90 +103,92 @@ export default function ResultScreen() {
     : 0;
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={{ paddingHorizontal: pagePadding, paddingBottom: hp(4) }}
-    >
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: hp(6), paddingBottom: hp(2) }]}>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)/' as never)}>
-          <Ionicons name="home-outline" size={rs(24)} color={Colors.primary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { fontSize: rs(18) }]}>نتيجة الامتحان</Text>
-        <TouchableOpacity onPress={onPrint}>
-          <Ionicons name="print-outline" size={rs(24)} color={hasPaid ? Colors.primary : Colors.text.disabled} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Score Card */}
-      <MotionView delay={80} style={[styles.scoreCard, { padding: rs(24), borderRadius: rs(20), marginBottom: rs(20) }]}>
-        <Text style={[styles.examTitle, { fontSize: rs(16), marginBottom: rs(16) }]}>
-          {result.examTitle}
-        </Text>
-
-        <View style={[styles.circleScore, {
-          width: rs(120), height: rs(120), borderRadius: rs(60),
-          borderWidth: rs(8), borderColor: scoreColor, marginBottom: rs(16),
-        }]}>
-          <Text style={[styles.scoreNum, { fontSize: rs(32), color: scoreColor }]}>
-            {result.totalScore?.toFixed(1)}
-          </Text>
-          <Text style={[styles.scoreMax, { fontSize: rs(14) }]}>/ {result.maxScore}</Text>
+    <View style={{ flex: 1 }}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{ paddingHorizontal: pagePadding, paddingBottom: hp(4) }}
+      >
+        {/* Header */}
+        <View style={[styles.header, { paddingTop: hp(6), paddingBottom: hp(2) }]}>
+          <TouchableOpacity onPress={() => router.replace('/(tabs)/' as never)}>
+            <Ionicons name="home-outline" size={rs(24)} color={Colors.primary} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { fontSize: rs(18) }]}>نتيجة الامتحان</Text>
+          <TouchableOpacity onPress={onPrint}>
+            <Ionicons name="print-outline" size={rs(24)} color={hasPaid ? Colors.primary : Colors.text.disabled} />
+          </TouchableOpacity>
         </View>
 
-        <Text style={[styles.scorePct, { fontSize: rs(20), color: scoreColor }]}>
-          {scorePct}%
+        {/* Score Card */}
+        <MotionView delay={80} style={[styles.scoreCard, { padding: rs(24), borderRadius: rs(20), marginBottom: rs(20) }]}>
+          <Text style={[styles.examTitle, { fontSize: rs(16), marginBottom: rs(16) }]}>
+            {result.examTitle}
+          </Text>
+
+          <View style={[styles.circleScore, {
+            width: rs(120), height: rs(120), borderRadius: rs(60),
+            borderWidth: rs(8), borderColor: scoreColor, marginBottom: rs(16),
+          }]}>
+            <Text style={[styles.scoreNum, { fontSize: rs(32), color: scoreColor }]}>
+              {result.totalScore?.toFixed(1)}
+            </Text>
+            <Text style={[styles.scoreMax, { fontSize: rs(14) }]}>/ {result.maxScore}</Text>
+          </View>
+
+          <Text style={[styles.scorePct, { fontSize: rs(20), color: scoreColor }]}>
+            {scorePct}%
+          </Text>
+
+          <Text style={[styles.scoreLabel, { fontSize: rs(14), marginTop: rs(8) }]}>
+            {scorePct >= 80 ? '🌟 ممتاز!' : scorePct >= 60 ? '👍 جيد' : scorePct >= 50 ? '⚠️ مقبول' : '📚 تحتاج مراجعة'}
+          </Text>
+
+          <Text style={[styles.scoreDate, { fontSize: rs(12), marginTop: rs(8) }]}>
+            {new Date(result.submittedAt).toLocaleDateString('ar-IQ')}
+          </Text>
+        </MotionView>
+
+        {/* Stats */}
+        <MotionView delay={140} style={[styles.statsRow, { marginBottom: rs(20), gap: rs(12) }, !isTablet && styles.statsRowMobile]}>
+          <View style={[styles.statCard, { padding: rs(16), borderRadius: rs(14) }]}>
+            <Text style={[styles.statNum, { fontSize: rs(22), color: Colors.success }]}>
+              {result.questions.filter(q => q.aiScore >= q.degree * 0.5).length}
+            </Text>
+            <Text style={[styles.statLabel, { fontSize: rs(12) }]}>إجابات صحيحة</Text>
+          </View>
+          <View style={[styles.statCard, { padding: rs(16), borderRadius: rs(14) }]}>
+            <Text style={[styles.statNum, { fontSize: rs(22), color: Colors.error }]}>
+              {result.questions.filter(q => q.aiScore < q.degree * 0.5).length}
+            </Text>
+            <Text style={[styles.statLabel, { fontSize: rs(12) }]}>تحتاج مراجعة</Text>
+          </View>
+          <View style={[styles.statCard, { padding: rs(16), borderRadius: rs(14) }]}>
+            <Text style={[styles.statNum, { fontSize: rs(22), color: Colors.primary }]}>
+              {result.questions.length}
+            </Text>
+            <Text style={[styles.statLabel, { fontSize: rs(12) }]}>عدد الأسئلة</Text>
+          </View>
+        </MotionView>
+
+        {/* Questions Detail */}
+        <Text style={[styles.sectionTitle, { fontSize: rs(16), marginBottom: rs(12) }]}>
+          تفصيل الأسئلة
         </Text>
 
-        <Text style={[styles.scoreLabel, { fontSize: rs(14), marginTop: rs(8) }]}>
-          {scorePct >= 80 ? '🌟 ممتاز!' : scorePct >= 60 ? '👍 جيد' : scorePct >= 50 ? '⚠️ مقبول' : '📚 تحتاج مراجعة'}
-        </Text>
+        {result.questions.map((q, index) => (
+          <QuestionCard
+            key={q.questionId}
+            question={q}
+            index={index}
+            expanded={expandedQ === q.questionId}
+            onToggle={() => setExpandedQ(expandedQ === q.questionId ? null : q.questionId)}
+            rs={rs}
+            hp={hp}
+          />
+        ))}
+      </ScrollView>
 
-        <Text style={[styles.scoreDate, { fontSize: rs(12), marginTop: rs(8) }]}>
-          {new Date(result.submittedAt).toLocaleDateString('ar-IQ')}
-        </Text>
-      </MotionView>
-
-      {/* Stats */}
-      <MotionView delay={140} style={[styles.statsRow, { marginBottom: rs(20), gap: rs(12) }, !isTablet && styles.statsRowMobile]}>
-        <View style={[styles.statCard, { padding: rs(16), borderRadius: rs(14) }]}>
-          <Text style={[styles.statNum, { fontSize: rs(22), color: Colors.success }]}>
-            {result.questions.filter(q => q.aiScore >= q.degree * 0.5).length}
-          </Text>
-          <Text style={[styles.statLabel, { fontSize: rs(12) }]}>إجابات صحيحة</Text>
-        </View>
-        <View style={[styles.statCard, { padding: rs(16), borderRadius: rs(14) }]}>
-          <Text style={[styles.statNum, { fontSize: rs(22), color: Colors.error }]}>
-            {result.questions.filter(q => q.aiScore < q.degree * 0.5).length}
-          </Text>
-          <Text style={[styles.statLabel, { fontSize: rs(12) }]}>تحتاج مراجعة</Text>
-        </View>
-        <View style={[styles.statCard, { padding: rs(16), borderRadius: rs(14) }]}>
-          <Text style={[styles.statNum, { fontSize: rs(22), color: Colors.primary }]}>
-            {result.questions.length}
-          </Text>
-          <Text style={[styles.statLabel, { fontSize: rs(12) }]}>عدد الأسئلة</Text>
-        </View>
-      </MotionView>
-
-      {/* Questions Detail */}
-      <Text style={[styles.sectionTitle, { fontSize: rs(16), marginBottom: rs(12) }]}>
-        تفصيل الأسئلة
-      </Text>
-
-      {result.questions.map((q, index) => (
-        <QuestionCard
-          key={q.questionId}
-          question={q}
-          index={index}
-          expanded={expandedQ === q.questionId}
-          onToggle={() => setExpandedQ(expandedQ === q.questionId ? null : q.questionId)}
-          rs={rs}
-          hp={hp}
-        />
-      ))}
-
-      {/* Streak Popup */}
+      {/* Streak Popup — خارج ScrollView */}
       {showStreakPopup && (
         <View style={styles.popupOverlay}>
           <View style={[styles.popupBox, { padding: rs(28), borderRadius: rs(24), margin: rs(24) }]}>
@@ -211,7 +213,7 @@ export default function ResultScreen() {
         </View>
       )}
 
-      {/* New Best Popup */}
+      {/* New Best Popup — خارج ScrollView */}
       {showBestPopup && (
         <View style={styles.popupOverlay}>
           <View style={[styles.popupBox, { padding: rs(28), borderRadius: rs(24), margin: rs(24) }]}>
@@ -235,7 +237,7 @@ export default function ResultScreen() {
           </View>
         </View>
       )}
-    </ScrollView>
+    </View>
   );
 }
 
