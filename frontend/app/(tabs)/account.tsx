@@ -1,6 +1,6 @@
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, Image, Alert,
+  StyleSheet, Image, Alert, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,10 +16,17 @@ export default function AccountScreen() {
   const { handleLogout } = useAuth();
 
   function onLogout() {
-    Alert.alert('تسجيل الخروج', 'هل أنت متأكد؟', [
-      { text: 'إلغاء', style: 'cancel' },
-      { text: 'خروج', style: 'destructive', onPress: handleLogout },
-    ]);
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('هل أنت متأكد من تسجيل الخروج؟');
+      if (confirmed) {
+        handleLogout();
+      }
+    } else {
+      Alert.alert('تسجيل الخروج', 'هل أنت متأكد؟', [
+        { text: 'إلغاء', style: 'cancel' },
+        { text: 'خروج', style: 'destructive', onPress: handleLogout },
+      ]);
+    }
   }
 
   const menuItems = [
