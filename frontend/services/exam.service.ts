@@ -80,8 +80,18 @@ export async function saveAnswer(
   });
 }
 
-export async function submitExam(sessionId: string): Promise<void> {
-  await api.post(`/sessions/${sessionId}/submit`);
+export async function submitExam(sessionId: string): Promise<{
+  totalScore: number;
+  maxScore: number;
+  streak: {
+    current: number;
+    best: number;
+    isNewBest: boolean;
+    alreadyCompletedToday: boolean;
+  };
+}> {
+  const res = await api.post(`/sessions/${sessionId}/submit`);
+  return res.data.data;
 }
 
 export async function getResult(sessionId: string): Promise<ExamResult> {

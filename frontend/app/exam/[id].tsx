@@ -158,8 +158,19 @@ export default function ExamScreen() {
           await saveAnswer(sId, q.id, answer.text ?? '', answer.images);
         }
       }
-      await submitExam(sId);
-      router.replace(`/result/${sId}` as never);
+      
+      const result = await submitExam(sId);
+      
+      // تمرير بيانات الـ streak للـ result page
+      router.replace({
+        pathname: `/result/${sId}`,
+        params: {
+          streakCurrent: result.streak.current.toString(),
+          streakBest: result.streak.best.toString(),
+          isNewBest: result.streak.isNewBest ? '1' : '0',
+          alreadyToday: result.streak.alreadyCompletedToday ? '1' : '0',
+        },
+      } as never);
     } catch {
       Alert.alert('خطأ', 'تعذر تسليم الامتحان');
     } finally {

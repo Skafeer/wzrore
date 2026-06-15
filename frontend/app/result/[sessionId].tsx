@@ -13,19 +13,49 @@ import { useAuthStore } from '../../store/auth.store';
 import { MotionView, PressableScale } from '../../components/motion';
 
 export default function ResultScreen() {
-  const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
+  const { sessionId, streakCurrent, streakBest, isNewBest, alreadyToday } = useLocalSearchParams<{
+    sessionId: string;
+    streakCurrent?: string;
+    streakBest?: string;
+    isNewBest?: string;
+    alreadyToday?: string;
+  }>();
   const { rs, hp, pagePadding, isTablet } = useResponsive();
   const user = useAuthStore((s) => s.user);
 
   const [result, setResult] = useState<ExamResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedQ, setExpandedQ] = useState<string | null>(null);
+  const [showStreakPopup, setShowStreakPopup] = useState(false);
+  const [showBestPopup, setShowBestPopup] = useState(false);
 
   const hasPaid = !!user?.subscription;
 
   useEffect(() => {
     getResult(sessionId!).then(setResult).finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (streakCurrent && alreadyToday !== '1') {
+      setTimeout(() => {
+        if (isNewBest === '1') {
+          setShowBestPopup(true);
+        } else {
+          setShowStreakPopup(true);
+        }
+      }, 1000);
+    }
+  }, []);
+
+  function getStreakMessage(streak: number): string {
+    if (streak >= 100) return 'أنت من أكثر الطلاب التزاماً 🏆';
+    if (streak >= 60) return 'إنجاز رائع، استمر بنفس الوتيرة 💪';
+    if (streak >= 30) return 'شهر كامل من الاستمرارية 💙';
+    if (streak >= 14) return 'مستواك يتحسن يوماً بعد يوم 📈';
+    if (streak >= 7) return 'أسبوع كامل من الالتزام 🔥';
+    if (streak >= 3) return 'استمر، أنت تبني عادة دراسة حقيقية 💡';
+    return 'بداية ممتازة 👏';
+  }
 
   function onPrint() {
     if (!hasPaid) {
@@ -155,6 +185,56 @@ export default function ResultScreen() {
           hp={hp}
         />
       ))}
+
+      {/* Streak Popup */}
+      {showStreakPopup && (
+        <View style={styles.popupOverlay}>
+          <View style={[styles.popupBox, { padding: rs(28), borderRadius: rs(24), margin: rs(24) }]}>
+            <Text style={[styles.popupEmoji, { fontSize: rs(48) }]}>🔥</Text>
+            <Text style={[styles.popupTitle, { fontSize: rs(22), marginTop: rs(12) }]}>
+              تم الحفاظ على سلسلة الدراسة!
+            </Text>
+            <Text style={[styles.popupStreak, { fontSize: rs(48), marginTop: rs(8) }]}>
+              {streakCurrent}
+            </Text>
+            <Text style={[styles.popupSub, { fontSize: rs(14) }]}>يوم متواصل</Text>
+            <Text style={[styles.popupMsg, { fontSize: rs(14), marginTop: rs(8) }]}>
+              {getStreakMessage(parseInt(streakCurrent ?? '0'))}
+            </Text>
+            <TouchableOpacity
+              style={[styles.popupBtn, { marginTop: rs(20), paddingVertical: rs(14), borderRadius: rs(14) }]}
+              onPress={() => setShowStreakPopup(false)}
+            >
+              <Text style={[styles.popupBtnText, { fontSize: rs(16) }]}>ممتاز! 💪</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* New Best Popup */}
+      {showBestPopup && (
+        <View style={styles.popupOverlay}>
+          <View style={[styles.popupBox, { padding: rs(28), borderRadius: rs(24), margin: rs(24) }]}>
+            <Text style={[styles.popupEmoji, { fontSize: rs(48) }]}>🏆</Text>
+            <Text style={[styles.popupTitle, { fontSize: rs(22), marginTop: rs(12) }]}>
+              رقم قياسي جديد!
+            </Text>
+            <Text style={[styles.popupStreak, { fontSize: rs(48), marginTop: rs(8), color: Colors.secondary }]}>
+              {streakBest}
+            </Text>
+            <Text style={[styles.popupSub, { fontSize: rs(14) }]}>أفضل سلسلة دراسة لديك</Text>
+            <Text style={[styles.popupMsg, { fontSize: rs(14), marginTop: rs(8) }]}>
+              استمر في التقدم 🚀
+            </Text>
+            <TouchableOpacity
+              style={[styles.popupBtn, { marginTop: rs(20), paddingVertical: rs(14), borderRadius: rs(14), backgroundColor: Colors.secondary }]}
+              onPress={() => { setShowBestPopup(false); setShowStreakPopup(true); }}
+            >
+              <Text style={[styles.popupBtnText, { fontSize: rs(16), color: Colors.text.primary }]}>رائع! 🎉</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -371,4 +451,13 @@ const styles = StyleSheet.create({
     writingDirection: 'rtl',
     flexWrap: 'wrap',
   },
+  popupOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', zIndex: 999 },
+  popupBox: { backgroundColor: Colors.white, alignItems: 'center', width: '100%', elevation: 10, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20 },
+  popupEmoji: {},
+  popupTitle: { color: Colors.text.primary, fontWeight: 'bold', textAlign: 'center' },
+  popupStreak: { color: Colors.primary, fontWeight: 'bold' },
+  popupSub: { color: Colors.text.secondary },
+  popupMsg: { color: Colors.text.secondary, textAlign: 'center' },
+  popupBtn: { backgroundColor: Colors.primary, width: '100%', alignItems: 'center' },
+  popupBtnText: { color: Colors.white, fontWeight: 'bold' },
 });

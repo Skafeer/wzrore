@@ -7,6 +7,9 @@ export interface User {
   province: string;
   avatar?: string;
   studyStreak: number;
+  bestStreak: number;
+  streakFreeze: number;
+  lastStudyDate?: string;
   subscription?: Subscription | null;
 }
 
@@ -105,4 +108,24 @@ export interface LastExam {
   totalScore: number;
   maxScore: number;
   submittedAt: string;
+}
+
+// إضافة واجهة لنتيجة الـ Streak عند تسليم الامتحان
+export interface SubmitExamResponse {
+  sessionId: string;
+  totalScore: number;
+  maxScore: number;
+  gradingResults: GradingResult[];
+  streak: {
+    current: number;
+    best: number;
+    isNewBest: boolean;
+    alreadyCompletedToday: boolean;
+  };
+}
+
+export interface GradingResult {
+  questionId: string;
+  score: number;
+  feedback: string;
 }
