@@ -129,7 +129,7 @@ export default function HomeScreen() {
         >
           <View style={styles.startRow}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.startTitle, { fontSize: rs(18) }]}>ابدأ اختبار جديد</Text>
+              <Text style={[styles.startTitle, { fontSize: rs(18) }]}>ابدأ امتحان جديد</Text>
               <Text style={[styles.startDesc, { fontSize: rs(13) }]}>اختر المادة وابدأ الامتحان الآن</Text>
             </View>
             <View style={[styles.startIcon, { width: rs(48), height: rs(48), borderRadius: rs(24) }]}>
