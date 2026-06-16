@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../store/auth.store';
 import api from '../services/api';
 
 export function useStoredAuth() {
+  const [isLoading, setIsLoading] = useState(true);
   const { setAuth, logout } = useAuthStore();
 
   useEffect(() => {
@@ -51,8 +52,12 @@ export function useStoredAuth() {
           await AsyncStorage.removeItem('token');
           await AsyncStorage.removeItem('user');
         }
+      } finally {
+        setIsLoading(false);
       }
     }
     loadAuth();
   }, []);
+
+  return { isLoading };
 }
