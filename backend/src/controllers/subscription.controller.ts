@@ -2,7 +2,13 @@ import crypto from 'crypto';
 import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
 import { AuthRequest } from '../types';
-import { encrypt, decrypt } from '../utils/encryption';
+
+function hashCode(code: string): string {
+  return crypto
+    .createHmac('sha256', process.env.ENCRYPTION_KEY!)
+    .update(code.trim().toUpperCase())
+    .digest('hex');
+}
 
 // ═══ STUDENT ═══
 
@@ -16,10 +22,10 @@ export async function redeemCode(req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    const encryptedCode = encrypt(code.trim().toUpperCase());
+    const hashed = hashCode(code);
 
     const subCode = await prisma.subscriptionCode.findUnique({
-      where: { code: encryptedCode },
+      where: { code: hashed },
     });
 
     if (!subCode) {
@@ -45,7 +51,7 @@ export async function redeemCode(req: AuthRequest, res: Response): Promise<void>
     else if (subCode.plan === 'YEARLY') endDate.setFullYear(endDate.getFullYear() + 1);
 
     await prisma.subscriptionCode.update({
-      where: { code: encryptedCode },
+      where: { code: hashed },
       data: { isUsed: true, usedBy: userId, usedAt: new Date() },
     });
 
@@ -106,7 +112,7 @@ export async function adminGetCodes(req: Request, res: Response): Promise<void> 
       success: true,
       data: codes.map(c => ({
         ...c,
-        code: decrypt(c.code),
+        code: c.plainCode ?? c.code, // عرض الكود الأصلي
       })),
     });
   } catch {
@@ -128,11 +134,11 @@ export async function adminCreateCodes(req: Request, res: Response): Promise<voi
 
     for (let i = 0; i < parseInt(count); i++) {
       const plainCode = generateCode();
-      const encryptedCode = encrypt(plainCode);
+      const hashed = hashCode(plainCode);
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 7);
       plainCodes.push(plainCode);
-      codes.push({ code: encryptedCode, plan, expiresAt });
+      codes.push({ code: hashed, plainCode, plan, expiresAt });
     }
 
     await prisma.subscriptionCode.createMany({ data: codes });

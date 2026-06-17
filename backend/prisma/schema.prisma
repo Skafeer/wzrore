@@ -224,7 +224,8 @@ model Subscription {
 
 model SubscriptionCode {
   id        String           @id @default(uuid())
-  code      String           @unique
+  code      String           @unique  // hash للأمان
+  plainCode String?                   // الكود الأصلي للعرض
   plan      SubscriptionPlan
   isUsed    Boolean          @default(false)
   usedBy    String?
