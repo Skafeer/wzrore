@@ -14,18 +14,22 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sawabedu"
+      "bundleIdentifier": "com.sawabedu",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1D4ED8"
       },
-      "package": "com.sawabedu"
+      "package": "com.sawabedu",
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging"
     ],
     "scheme": "sawab",
     "experiments": {
@@ -37,9 +41,7 @@
         "projectId": "3315321a-f55a-4318-a8c1-bd658a5f66ad"
       }
     },
-    "runtimeVersion": {
-      "policy": "sdkVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "updates": {
       "url": "https://u.expo.dev/3315321a-f55a-4318-a8c1-bd658a5f66ad"
     }

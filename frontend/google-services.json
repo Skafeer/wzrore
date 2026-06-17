@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "682826600550",
+    "project_id": "sawab-bfdb4",
+    "storage_bucket": "sawab-bfdb4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:682826600550:android:ffa3110f4d452fddb09da7",
+        "android_client_info": {
+          "package_name": "com.sawabedu"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2twU8YZoDb-xJdlMcgIIOhf5soOIFJec"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
