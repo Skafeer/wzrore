@@ -10,7 +10,7 @@ import examRoutes from './routes/exam.routes';
 import sessionRoutes from './routes/session.routes';
 import subscriptionRoutes from './routes/subscription.routes';
 import userRoutes from './routes/user.routes';
-
+import notificationRoutes from './routes/notification.routes';
 import { errorHandler, notFound } from './middleware/error';
 
 // فقط في development
@@ -59,6 +59,7 @@ app.use('/api/exams', examRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // ═══ Error Handling ═══
 app.use(notFound);
