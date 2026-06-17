@@ -430,7 +430,7 @@ async function updateStudyStreak(userId: string): Promise<{
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
 
-  let newStreak = 1;
+  let newStreak = 0;
 
   if (lastStudy) {
     const diffDays = Math.floor((today.getTime() - lastStudy.getTime()) / (1000 * 60 * 60 * 24));
@@ -447,7 +447,7 @@ async function updateStudyStreak(userId: string): Promise<{
       });
     } else if (diffDays > 1) {
       // فاته أكثر من يوم — تصفير
-      newStreak = 1;
+      newStreak = 0;
     }
   }
 
