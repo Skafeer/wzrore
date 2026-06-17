@@ -60,6 +60,7 @@ model User {
   bestStreak    Int           @default(0)
   lastStudyDate DateTime?
   streakFreeze  Int           @default(1)
+  fcmToken      String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -224,8 +225,8 @@ model Subscription {
 
 model SubscriptionCode {
   id        String           @id @default(uuid())
-  code      String           @unique  // hash للأمان
-  plainCode String?                   // الكود الأصلي للعرض
+  code      String           @unique
+  plainCode String?
   plan      SubscriptionPlan
   isUsed    Boolean          @default(false)
   usedBy    String?
@@ -245,6 +246,20 @@ model LaunchPeriod {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ═══════════════════════════════
+//  NOTIFICATIONS
+// ═══════════════════════════════
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  body      String
+  data      Json?
+  sentBy    String
+  sentAt    DateTime @default(now())
+  totalSent Int      @default(0)
 }
 
 // ═══════════════════════════════
