@@ -430,7 +430,7 @@ async function updateStudyStreak(userId: string): Promise<{
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
 
-  let newStreak = 0;
+  let newStreak = 1; // ✅ القيمة الافتراضية = 1 (أول امتحان أو بعد انتهاء السلسلة)
 
   if (lastStudy) {
     const diffDays = Math.floor((today.getTime() - lastStudy.getTime()) / (1000 * 60 * 60 * 24));
@@ -446,10 +446,12 @@ async function updateStudyStreak(userId: string): Promise<{
         data: { streakFreeze: user.streakFreeze - 1 },
       });
     } else if (diffDays > 1) {
-      // فاته أكثر من يوم — تصفير
-      newStreak = 0;
+      // فاته أكثر من يوم — تصفير (تبقى 1 لأن اليوم الجديد يعتبر بداية جديدة)
+      newStreak = 1;
     }
+    // diffDays === 0 تم التعامل معها أعلاه (alreadyCompletedToday)
   }
+  // else: lastStudy === null (أول امتحان) → newStreak = 1 ✅
 
   const newBestStreak = Math.max(newStreak, user.bestStreak);
   const isNewBest = newStreak > user.bestStreak;

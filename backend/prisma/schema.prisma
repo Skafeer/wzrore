@@ -59,7 +59,7 @@ model User {
   studyStreak   Int           @default(0)
   bestStreak    Int           @default(0)
   lastStudyDate DateTime?
-  streakFreeze  Int           @default(1)
+  streakFreeze  Int           @default(0)
   fcmToken      String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
