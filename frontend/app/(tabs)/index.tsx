@@ -82,7 +82,7 @@ export default function HomeScreen() {
         <View>
           <Text style={[styles.welcome, { fontSize: rs(14) }]}>مرحباً 👋</Text>
           <Text style={[styles.name, { fontSize: rs(22) }]}>{user?.name}</Text>
-          <Text style={[styles.motivate, { fontSize: rs(13) }]}>مستعد تمتحن نفسك اليوم؟</Text>
+          <Text style={[styles.motivate, { fontSize: rs(13) }]}>مستعد تمتحن نفسك اليوم ؟</Text>
         </View>
         <View style={[styles.avatarBox, { width: rs(48), height: rs(48) }]}>
           <Ionicons name="person" size={rs(24)} color={Colors.primary} />
