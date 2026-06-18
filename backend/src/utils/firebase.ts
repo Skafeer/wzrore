@@ -31,7 +31,6 @@ export async function sendNotification(
         notification: {
           sound: 'default',
           channelId: 'sawab_notifications',
-          icon: 'ic_notification',
           color: '#1D4ED8',
         },
       },
@@ -67,7 +66,6 @@ export async function sendNotificationToAll(
         notification: {
           sound: 'default',
           channelId: 'sawab_notifications',
-          icon: 'ic_launcher',
           color: '#1D4ED8',
         },
       },
