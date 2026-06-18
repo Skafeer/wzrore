@@ -10,6 +10,7 @@ import StudentsPage from './pages/students/Students';
 import SubscriptionsPage from './pages/subscriptions/Subscriptions';
 import ReportsPage from './pages/reports/Reports';
 import AdminsPage from './pages/admins/Admins';
+import NotificationsPage from './pages/notifications/Notifications';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="subscriptions" element={<SubscriptionsPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="admins" element={<AdminsPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

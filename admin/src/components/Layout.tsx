@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/auth.store';
 import {
   LayoutDashboard, BookOpen, FileText, Users,
-  CreditCard, Flag, Shield, LogOut, GraduationCap,
+  CreditCard, Flag, Shield, LogOut, GraduationCap, Bell,
 } from 'lucide-react';
 
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
   { path: '/students', label: 'الطلاب', icon: Users },
   { path: '/subscriptions', label: 'الاشتراكات', icon: CreditCard },
   { path: '/reports', label: 'البلاغات', icon: Flag },
+  { path: '/notifications', label: 'الإشعارات', icon: Bell },
   { path: '/admins', label: 'الأدمنية', icon: Shield, superOnly: true },
 ];
 
