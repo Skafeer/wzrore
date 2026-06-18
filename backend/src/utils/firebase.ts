@@ -67,7 +67,7 @@ export async function sendNotificationToAll(
         notification: {
           sound: 'default',
           channelId: 'sawab_notifications',
-          icon: 'ic_notification',
+          icon: 'ic_launcher',
           color: '#1D4ED8',
         },
       },
