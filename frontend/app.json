@@ -23,7 +23,11 @@
         "backgroundColor": "#1D4ED8"
       },
       "package": "com.sawabedu",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "notification": {
+        "icon": "./assets/android-icon-monochrome.png",
+        "color": "#1D4ED8"
+      }
     },
     "plugins": [
       "expo-router",
