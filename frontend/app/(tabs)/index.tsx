@@ -11,6 +11,7 @@ import { getProfile } from '../../services/user.service';
 import { useResponsive } from '../../hooks/useResponsive';
 import { Colors } from '../../constants/colors';
 import { LastExam, PerformanceSummary } from '../../types';
+import { MotionView, PressableScale } from '../../components/motion';
 
 function getStreakMessage(streak: number, completedToday: boolean): string {
   if (completedToday) return 'تم الحفاظ على السلسلة اليوم';
@@ -33,27 +34,98 @@ function getTimeBasedGreeting(): string {
   }
 }
 
+function HomeSkeleton({ rs, hp, pagePadding }: { rs: (size: number) => number; hp: (size: number) => number; pagePadding: number }) {
+  const opacity = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [opacity]);
+
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: Colors.background }}
+      contentContainerStyle={{ paddingHorizontal: pagePadding, paddingBottom: hp(4) }}
+    >
+      <Animated.View style={[styles.header, { paddingTop: rs(25), paddingBottom: hp(2), opacity }]}>
+        <View>
+          <View style={{ width: rs(80), height: rs(14), backgroundColor: Colors.border, borderRadius: rs(4), marginBottom: rs(4) }} />
+          <View style={{ width: rs(120), height: rs(24), backgroundColor: Colors.border, borderRadius: rs(4) }} />
+        </View>
+        <View style={{ width: rs(48), height: rs(48), backgroundColor: Colors.border, borderRadius: rs(24) }} />
+      </Animated.View>
+
+      <Animated.View style={[styles.streakCard, { marginBottom: rs(24), padding: rs(24), paddingBottom: rs(20), opacity }]}>
+        <View style={styles.streakTop}>
+          <View style={styles.streakLeft}>
+            <View style={{ width: rs(44), height: rs(44), backgroundColor: Colors.border, borderRadius: rs(14) }} />
+            <View style={{ marginRight: rs(14) }}>
+              <View style={{ width: rs(60), height: rs(28), backgroundColor: Colors.border, borderRadius: rs(4), marginBottom: rs(6) }} />
+              <View style={{ width: rs(80), height: rs(12), backgroundColor: Colors.border, borderRadius: rs(4) }} />
+            </View>
+          </View>
+          <View style={{ width: rs(60), height: rs(30), backgroundColor: Colors.border, borderRadius: rs(30) }} />
+        </View>
+        <View style={{ width: '80%', height: rs(10), backgroundColor: Colors.border, borderRadius: rs(4), marginBottom: rs(14), marginTop: rs(4) }} />
+        <View style={{ width: '100%', height: rs(4), backgroundColor: Colors.border, borderRadius: rs(4) }} />
+      </Animated.View>
+
+      <Animated.View style={[styles.card, { padding: rs(24), marginBottom: rs(20), opacity }]}>
+        <View style={styles.cardHeader}>
+          <View>
+            <View style={{ width: rs(120), height: rs(16), backgroundColor: Colors.border, borderRadius: rs(4), marginBottom: rs(4) }} />
+            <View style={{ width: rs(160), height: rs(12), backgroundColor: Colors.border, borderRadius: rs(4) }} />
+          </View>
+          <View style={{ width: rs(40), height: rs(40), backgroundColor: Colors.border, borderRadius: rs(12) }} />
+        </View>
+        <View style={{ width: '100%', height: rs(44), backgroundColor: Colors.border, borderRadius: rs(14), marginTop: rs(16) }} />
+      </Animated.View>
+
+      <Animated.View style={[styles.card, { padding: rs(24), marginBottom: rs(20), opacity }]}>
+        <View style={[styles.cardHeader, { marginBottom: rs(14) }]}>
+          <View style={{ width: rs(100), height: rs(16), backgroundColor: Colors.border, borderRadius: rs(4) }} />
+          <View style={{ width: rs(36), height: rs(36), backgroundColor: Colors.border, borderRadius: rs(10) }} />
+        </View>
+        <View style={styles.examRow}>
+          <View style={{ flex: 1 }}>
+            <View style={{ width: '60%', height: rs(16), backgroundColor: Colors.border, borderRadius: rs(4), marginBottom: rs(6) }} />
+            <View style={{ width: '80%', height: rs(12), backgroundColor: Colors.border, borderRadius: rs(4), marginBottom: rs(4) }} />
+            <View style={{ width: '40%', height: rs(10), backgroundColor: Colors.border, borderRadius: rs(4) }} />
+          </View>
+          <View style={{ width: rs(70), height: rs(52), backgroundColor: Colors.border, borderRadius: rs(14) }} />
+        </View>
+        <View style={{ width: '100%', height: rs(40), backgroundColor: Colors.border, borderRadius: rs(14), marginTop: rs(16) }} />
+      </Animated.View>
+
+      <Animated.View style={[styles.card, { padding: rs(24), opacity }]}>
+        <View style={[styles.cardHeader, { marginBottom: rs(16) }]}>
+          <View style={{ width: rs(100), height: rs(16), backgroundColor: Colors.border, borderRadius: rs(4) }} />
+          <View style={{ width: rs(36), height: rs(36), backgroundColor: Colors.border, borderRadius: rs(10) }} />
+        </View>
+        <View style={styles.perfGrid}>
+          <View style={[styles.perfBox, { padding: rs(20), borderRadius: rs(16) }]}>
+            <View style={[styles.perfBoxBorder, { height: rs(3), left: rs(20), right: rs(20), backgroundColor: Colors.border }]} />
+            <View style={{ width: rs(40), height: rs(28), backgroundColor: Colors.border, borderRadius: rs(4), marginBottom: rs(4) }} />
+            <View style={{ width: rs(80), height: rs(12), backgroundColor: Colors.border, borderRadius: rs(4) }} />
+          </View>
+          <View style={[styles.perfBox, { padding: rs(20), borderRadius: rs(16) }]}>
+            <View style={[styles.perfBoxBorder, { height: rs(3), left: rs(20), right: rs(20), backgroundColor: Colors.border }]} />
+            <View style={{ width: rs(40), height: rs(28), backgroundColor: Colors.border, borderRadius: rs(4), marginBottom: rs(4) }} />
+            <View style={{ width: rs(80), height: rs(12), backgroundColor: Colors.border, borderRadius: rs(4) }} />
+          </View>
+        </View>
+      </Animated.View>
+    </ScrollView>
+  );
+}
+
 export default function HomeScreen() {
   const { rs, hp, pagePadding } = useResponsive();
   const { user, updateUser } = useAuthStore();
-
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(15)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
 
   const [lastExam, setLastExam] = useState<LastExam | null>(null);
   const [performance, setPerformance] = useState<PerformanceSummary | null>(null);
@@ -85,20 +157,16 @@ export default function HomeScreen() {
   useFocusEffect(useCallback(() => { loadData(); }, []));
 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
+    return <HomeSkeleton rs={rs} hp={hp} pagePadding={pagePadding} />;
   }
 
   return (
-    <Animated.ScrollView
-      style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
+    <ScrollView
+      style={styles.container}
       contentContainerStyle={{ paddingHorizontal: pagePadding, paddingBottom: hp(4) }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} />}
     >
-      <View style={[styles.header, { paddingTop: rs(25), paddingBottom: hp(2) }]}>
+      <MotionView delay={0} style={[styles.header, { paddingTop: rs(25), paddingBottom: hp(2) }]}>
         <View>
           <Text style={[styles.greetingText, { fontSize: rs(14) }]}>{getTimeBasedGreeting()}</Text>
           <Text style={[styles.userName, { fontSize: rs(22) }]}>{user?.name}</Text>
@@ -106,9 +174,9 @@ export default function HomeScreen() {
         <View style={[styles.avatarIcon, { width: rs(48), height: rs(48) }]}>
           <Ionicons name="person" size={rs(22)} color={Colors.primary} />
         </View>
-      </View>
+      </MotionView>
 
-      <View style={[styles.streakCard, { marginBottom: rs(24) }]}>
+      <MotionView delay={80} style={[styles.streakCard, { marginBottom: rs(24) }]}>
         <View style={styles.streakTop}>
           <View style={styles.streakLeft}>
             <View style={[styles.streakIcon, { width: rs(44), height: rs(44), borderRadius: rs(14) }]}>
@@ -134,34 +202,34 @@ export default function HomeScreen() {
         <View style={[styles.streakProgress, { height: rs(4), borderRadius: rs(4) }]}>
           <View style={[styles.streakProgressFill, { width: '60%', borderRadius: rs(4) }]} />
         </View>
-      </View>
+      </MotionView>
 
-      <TouchableOpacity
-        activeOpacity={0.85}
-        style={[styles.card, { padding: rs(24), marginBottom: rs(20) }]}
-        onPress={() => router.push('/(tabs)/exams')}
-      >
-        <View style={styles.cardHeader}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.cardTextH3, { fontSize: rs(17) }]}>ابدأ امتحان جديد</Text>
-            <Text style={[styles.cardTextP, { fontSize: rs(13) }]}>اختر المادة وابدأ الامتحان</Text>
-          </View>
-          <View style={[styles.cardIcon, { width: rs(40), height: rs(40), borderRadius: rs(12) }]}>
-            <Ionicons name="play-circle" size={rs(18)} color={Colors.primary} />
-          </View>
-        </View>
-
-        <TouchableOpacity 
-          activeOpacity={0.85}
-          style={[styles.ctaBtn, { paddingVertical: rs(14), borderRadius: rs(14), marginTop: rs(16) }]}
+      <MotionView delay={120}>
+        <PressableScale
+          style={[styles.card, { padding: rs(24), marginBottom: rs(20) }]}
           onPress={() => router.push('/(tabs)/exams')}
         >
-          <Text style={[styles.ctaBtnText, { fontSize: rs(16) }]}>ابدأ الآن</Text>
-        </TouchableOpacity>
-      </TouchableOpacity>
+          <View style={styles.cardHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.cardTextH3, { fontSize: rs(17) }]}>ابدأ امتحان جديد</Text>
+              <Text style={[styles.cardTextP, { fontSize: rs(13) }]}>اختر المادة وابدأ الامتحان</Text>
+            </View>
+            <View style={[styles.cardIcon, { width: rs(40), height: rs(40), borderRadius: rs(12) }]}>
+              <Ionicons name="play-circle" size={rs(18)} color={Colors.primary} />
+            </View>
+          </View>
+
+          <PressableScale 
+            style={[styles.ctaBtn, { paddingVertical: rs(14), borderRadius: rs(14), marginTop: rs(16) }]}
+            onPress={() => router.push('/(tabs)/exams')}
+          >
+            <Text style={[styles.ctaBtnText, { fontSize: rs(16) }]}>ابدأ الآن</Text>
+          </PressableScale>
+        </PressableScale>
+      </MotionView>
 
       {lastExam && (
-        <View style={[styles.card, { padding: rs(24), marginBottom: rs(20) }]}>
+        <MotionView delay={160} style={[styles.card, { padding: rs(24), marginBottom: rs(20) }]}>
           <View style={[styles.cardHeader, { marginBottom: rs(14) }]}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.cardTextH3, { fontSize: rs(16) }]}>آخر امتحان</Text>
@@ -191,18 +259,17 @@ export default function HomeScreen() {
             </View>
           </View>
           
-          <TouchableOpacity
-            activeOpacity={0.85}
+          <PressableScale
             style={[styles.secondaryBtn, { paddingVertical: rs(12), borderRadius: rs(14), marginTop: rs(16) }]}
             onPress={() => router.push(`/result/${lastExam.sessionId}` as never)}
           >
             <Text style={[styles.secondaryBtnText, { fontSize: rs(14) }]}>عرض النتيجة الكاملة</Text>
-          </TouchableOpacity>
-        </View>
+          </PressableScale>
+        </MotionView>
       )}
 
       {performance && (
-        <View style={[styles.card, { padding: rs(24), marginBottom: 0 }]}>
+        <MotionView delay={200} style={[styles.card, { padding: rs(24), marginBottom: 0 }]}>
           <View style={[styles.cardHeader, { marginBottom: rs(16) }]}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.cardTextH3, { fontSize: rs(16) }]}>ملخص الأداء</Text>
@@ -224,21 +291,19 @@ export default function HomeScreen() {
               <Text style={[styles.perfLabel, { fontSize: rs(12) }]}>متوسط الدرجات</Text>
             </View>
           </View>
-        </View>
+        </MotionView>
       )}
-    </Animated.ScrollView>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   greetingText: { color: Colors.text.secondary, fontFamily: 'Tajawal_500Medium' },
   userName: { color: Colors.text.primary, fontFamily: 'Tajawal_800ExtraBold', marginTop: 2 },
   avatarIcon: { backgroundColor: '#F1F5F9', borderRadius: 50, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
-  
   streakCard: { backgroundColor: Colors.primary, borderRadius: 20, padding: 24, paddingBottom: 20, shadowColor: Colors.primary, shadowOpacity: 0.15, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 5 },
   streakTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   streakLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
@@ -252,16 +317,13 @@ const styles = StyleSheet.create({
   bestBadgeSmall: { color: 'rgba(255,255,255,0.7)', fontFamily: 'Tajawal_500Medium' },
   streakProgress: { backgroundColor: 'rgba(255,255,255,0.15)', width: '100%', overflow: 'hidden' },
   streakProgressFill: { height: '100%', backgroundColor: Colors.secondary },
-
   card: { backgroundColor: Colors.surface, borderRadius: 20, padding: 24, borderWidth: 1, borderColor: Colors.border, shadowColor: Colors.shadow, shadowOpacity: 0.02, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 16 },
   cardIcon: { backgroundColor: Colors.primarySoft, justifyContent: 'center', alignItems: 'center' },
   cardTextH3: { color: Colors.text.primary, fontFamily: 'Tajawal_700Bold' },
   cardTextP: { color: Colors.text.secondary, fontFamily: 'Tajawal_500Medium' },
-
   ctaBtn: { width: '100%', backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', shadowColor: '#0F3B8C', shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
   ctaBtnText: { color: Colors.text.white, fontFamily: 'Tajawal_700Bold' },
-
   examRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'stretch', gap: 12 },
   examSubject: { color: Colors.text.primary, fontFamily: 'Tajawal_700Bold' },
   examTitle: { color: Colors.text.secondary, fontFamily: 'Tajawal_500Medium', marginTop: 2 },
@@ -270,10 +332,8 @@ const styles = StyleSheet.create({
   scoreBox: { backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 18, borderRadius: 14, minWidth: 70, shadowColor: Colors.primary, shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
   scoreNum: { color: Colors.secondary, fontFamily: 'Tajawal_800ExtraBold', lineHeight: 22 },
   scoreMax: { color: Colors.white, opacity: 0.7, fontFamily: 'Tajawal_500Medium' },
-
   secondaryBtn: { width: '100%', backgroundColor: Colors.secondary, justifyContent: 'center', alignItems: 'center', shadowColor: Colors.secondary, shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   secondaryBtnText: { color: Colors.primary, fontFamily: 'Tajawal_700Bold' },
-
   perfGrid: { flexDirection: 'row', gap: 12 },
   perfBox: { flex: 1, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', position: 'relative' },
   perfBoxBorder: { position: 'absolute', top: -1, backgroundColor: Colors.secondary },

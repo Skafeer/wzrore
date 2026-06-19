@@ -1,6 +1,6 @@
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, Image, Alert, Platform,
+  StyleSheet, Image, Alert, Platform, Switch,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,18 +9,61 @@ import { useAuth } from '../../hooks/useAuth';
 import { useResponsive } from '../../hooks/useResponsive';
 import { Colors } from '../../constants/colors';
 import { MotionView, PressableScale } from '../../components/motion';
+import { useState, useEffect } from 'react';
+import * as Notifications from 'expo-notifications';
+import { Platform as RNPlatform } from 'react-native';
+import { saveFcmToken } from '../../services/notification.service';
+import api from '../../services/api';
 
 export default function AccountScreen() {
   const { rs, hp, pagePadding } = useResponsive();
   const user = useAuthStore((s) => s.user);
   const { handleLogout } = useAuth();
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+
+  useEffect(() => {
+    checkNotificationStatus();
+  }, []);
+
+  async function checkNotificationStatus() {
+    if (RNPlatform.OS === 'web') return;
+    const { status } = await Notifications.getPermissionsAsync();
+    setNotificationsEnabled(status === 'granted' && !!user?.fcmToken);
+  }
+
+  async function toggleNotifications(value: boolean) {
+    if (RNPlatform.OS === 'web') return;
+    setNotifLoading(true);
+    try {
+      if (value) {
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('تنبيه', 'يرجى السماح بالإشعارات من إعدادات الجهاز');
+          setNotifLoading(false);
+          return;
+        }
+        const tokenData = await Notifications.getExpoPushTokenAsync({
+          projectId: '3315321a-f55a-4318-a8c1-bd658a5f66ad',
+        });
+        await saveFcmToken(tokenData.data);
+        setNotificationsEnabled(true);
+      } else {
+        // مسح التوكن من السيرفر
+        await api.post('/notifications/fcm-token', { token: null });
+        setNotificationsEnabled(false);
+      }
+    } catch {
+      Alert.alert('خطأ', 'تعذر تغيير إعدادات الإشعارات');
+    } finally {
+      setNotifLoading(false);
+    }
+  }
 
   function onLogout() {
     if (Platform.OS === 'web') {
       const confirmed = window.confirm('هل أنت متأكد من تسجيل الخروج؟');
-      if (confirmed) {
-        handleLogout();
-      }
+      if (confirmed) handleLogout();
     } else {
       Alert.alert('تسجيل الخروج', 'هل أنت متأكد؟', [
         { text: 'إلغاء', style: 'cancel' },
@@ -88,6 +131,24 @@ export default function AccountScreen() {
           </Text>
         </View>
       </MotionView>
+
+      {/* Notifications Toggle */}
+      {RNPlatform.OS !== 'web' && (
+        <MotionView delay={120} style={[styles.menuCard, { borderRadius: rs(16), marginBottom: rs(16) }]}>
+          <View style={[styles.menuItem, { paddingVertical: rs(14), paddingHorizontal: rs(16) }]}>
+            <Ionicons name="notifications-outline" size={rs(20)} color={Colors.text.secondary} />
+            <Text style={[styles.menuLabel, { fontSize: rs(15), marginRight: rs(12) }]}>الإشعارات</Text>
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={toggleNotifications}
+              disabled={notifLoading}
+              trackColor={{ false: Colors.border, true: Colors.primary }}
+              thumbColor={notificationsEnabled ? Colors.white : Colors.white}
+              style={{ marginRight: 'auto' as any }}
+            />
+          </View>
+        </MotionView>
+      )}
 
       {/* Menu */}
       <MotionView delay={150} style={[styles.menuCard, { borderRadius: rs(16), marginBottom: rs(20) }]}>

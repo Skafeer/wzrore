@@ -1,16 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, ActivityIndicator, LayoutAnimation,
-  Platform, UIManager,
+  Platform, UIManager, Animated,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useResponsive } from '../../hooks/useResponsive';
 import { Colors } from '../../constants/colors';
 import {
-  getSubjects, getChapters, getTopics,
-  getAvailableYears, getAvailableRounds, getExams,
+  getSubjects, getChapters, getTopics, getExams,
 } from '../../services/exam.service';
 import { Subject, Chapter, Topic, Exam } from '../../types';
 import { MotionView, PressableScale } from '../../components/motion';
@@ -19,10 +18,8 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-type ExamType = 'WIZARI' | 'CHAPTER' | null;
-type OpenField = 'subject' | 'type' | 'chapter' | 'year' | 'round' | 'topic' | null;
+type OpenField = 'subject' | 'chapter' | 'topic' | null;
 
-/* ─── Dropdown Field Component ───────────────────── */
 type DropdownFieldProps = {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
@@ -42,42 +39,37 @@ function DropdownField({
   return (
     <View style={[
       fieldStyles.container,
-      { marginBottom: rs(12), borderRadius: rs(14) },
+      { marginBottom: rs(12), borderRadius: rs(20) },
       disabled && fieldStyles.containerDisabled,
       isOpen && fieldStyles.containerOpen,
     ]}>
       <TouchableOpacity
-        activeOpacity={disabled ? 1 : 0.7}
+        activeOpacity={disabled ? 1 : 0.85}
         onPress={() => {
           if (disabled) return;
           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
           onToggle();
         }}
-        style={[fieldStyles.header, { padding: rs(14) }]}
-      >
+        style={[fieldStyles.header, { padding: rs(16) }]}>
         <View style={fieldStyles.headerRight}>
           <View style={[
             fieldStyles.iconBox,
-            { width: rs(36), height: rs(36), borderRadius: rs(10) },
+            { width: rs(42), height: rs(42), borderRadius: rs(12) },
             disabled && fieldStyles.iconBoxDisabled,
           ]}>
-            <Ionicons
-              name={icon}
-              size={rs(18)}
-              color={disabled ? Colors.text.disabled : Colors.primary}
-            />
+            <Ionicons name={icon} size={rs(20)} color={disabled ? Colors.text.disabled : Colors.primary} />
           </View>
-          <View style={{ marginRight: rs(10), flex: 1 }}>
+          <View style={{ marginRight: rs(12), flex: 1 }}>
             <Text style={[
               fieldStyles.label,
-              { fontSize: rs(11) },
+              { fontSize: rs(12) },
               disabled && fieldStyles.textDisabled,
             ]}>{label}</Text>
             <Text
               numberOfLines={1}
               style={[
                 fieldStyles.value,
-                { fontSize: rs(15) },
+                { fontSize: rs(16) },
                 !value && fieldStyles.placeholder,
                 disabled && fieldStyles.textDisabled,
               ]}
@@ -88,13 +80,13 @@ function DropdownField({
         </View>
         <Ionicons
           name={isOpen ? 'chevron-up' : 'chevron-down'}
-          size={rs(18)}
+          size={rs(20)}
           color={disabled ? Colors.text.disabled : Colors.text.secondary}
         />
       </TouchableOpacity>
 
       {isOpen && !disabled && (
-        <View style={[fieldStyles.optionsContainer, { paddingHorizontal: rs(14), paddingBottom: rs(12) }]}>
+        <View style={[fieldStyles.optionsContainer, { paddingHorizontal: rs(14), paddingBottom: rs(14) }]}>
           <View style={[fieldStyles.divider, { marginBottom: rs(10) }]} />
           {children}
         </View>
@@ -103,7 +95,6 @@ function DropdownField({
   );
 }
 
-/* ─── Option Item ────────────────────────────────── */
 type OptionItemProps = {
   label: string;
   selected: boolean;
@@ -116,47 +107,98 @@ function OptionItem({ label, selected, onPress, rs }: OptionItemProps) {
     <TouchableOpacity
       style={[
         fieldStyles.option,
-        { paddingVertical: rs(11), paddingHorizontal: rs(14), borderRadius: rs(10), marginBottom: rs(4) },
+        { paddingVertical: rs(12), paddingHorizontal: rs(14), borderRadius: rs(12), marginBottom: rs(4) },
         selected && fieldStyles.optionSelected,
       ]}
       onPress={onPress}
-      activeOpacity={0.7}
+      activeOpacity={0.85}
     >
       <Text style={[
         fieldStyles.optionText,
         { fontSize: rs(14) },
         selected && fieldStyles.optionTextSelected,
       ]}>{label}</Text>
-      {selected && (
-        <Ionicons name="checkmark-circle" size={rs(18)} color={Colors.primary} />
-      )}
+      {selected && <Ionicons name="checkmark-circle" size={rs(20)} color={Colors.primary} />}
     </TouchableOpacity>
   );
 }
 
-/* ─── Main Screen ────────────────────────────────── */
+function ExamSkeleton({ count = 3, rs }: { count?: number; rs: (size: number) => number }) {
+  const opacity = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 1000, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.3, duration: 1000, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [opacity]);
+
+  return (
+    <>
+      {Array.from({ length: count }).map((_, index) => (
+        <Animated.View
+          key={index}
+          style={[
+            skeletonStyles.card,
+            { padding: rs(16), marginBottom: rs(10), borderRadius: rs(20), opacity },
+          ]}
+        >
+          <View style={skeletonStyles.row}>
+            <View style={[skeletonStyles.icon, { width: rs(40), height: rs(40), borderRadius: rs(12), marginLeft: rs(12) }]} />
+            <View style={{ flex: 1, marginRight: rs(4) }}>
+              <View style={[skeletonStyles.textBlock, { width: '60%', height: rs(14), marginBottom: rs(6) }]} />
+              <View style={{ flexDirection: 'row', gap: rs(8) }}>
+                <View style={[skeletonStyles.textBlock, { width: '35%', height: rs(11) }]} />
+                <View style={[skeletonStyles.textBlock, { width: '30%', height: rs(11) }]} />
+              </View>
+            </View>
+            <View style={[skeletonStyles.btnBlock, { width: rs(50), height: rs(28), borderRadius: rs(12) }]} />
+          </View>
+        </Animated.View>
+      ))}
+    </>
+  );
+}
+
+const skeletonStyles = StyleSheet.create({
+  card: {
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  icon: {
+    backgroundColor: Colors.border,
+  },
+  textBlock: {
+    backgroundColor: Colors.border,
+    borderRadius: 4,
+  },
+  btnBlock: {
+    backgroundColor: Colors.border,
+  },
+});
+
 export default function ExamsScreen() {
   const { rs, hp, pagePadding } = useResponsive();
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
-  const [years, setYears] = useState<number[]>([]);
-  const [rounds, setRounds] = useState<number[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
 
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
-  const [examType, setExamType] = useState<ExamType>(null);
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
-  const [selectedRound, setSelectedRound] = useState<number | null>(null);
 
   const [loadingSubjects, setLoadingSubjects] = useState(true);
   const [loadingChapters, setLoadingChapters] = useState(false);
   const [loadingTopics, setLoadingTopics] = useState(false);
-  const [loadingYears, setLoadingYears] = useState(false);
-  const [loadingRounds, setLoadingRounds] = useState(false);
   const [loadingExams, setLoadingExams] = useState(false);
 
   const [openField, setOpenField] = useState<OpenField>(null);
@@ -166,62 +208,50 @@ export default function ExamsScreen() {
     setOpenField(prev => prev === field ? null : field);
   }, []);
 
-  /* ─── Data Loading ─────────────────────────────── */
   useEffect(() => {
     getSubjects().then(setSubjects).finally(() => setLoadingSubjects(false));
   }, []);
 
   useEffect(() => {
-    if (!selectedSubject) return;
-    setChapters([]); setTopics([]); setYears([]); setRounds([]);
-    setSelectedChapter(null); setSelectedTopic(null);
-    setSelectedYear(null); setSelectedRound(null);
-    setExams([]);
-
-    if (examType === 'CHAPTER') {
-      setLoadingChapters(true);
-      getChapters(selectedSubject.id).then(setChapters).finally(() => setLoadingChapters(false));
-    } else if (examType === 'WIZARI') {
-      setLoadingYears(true);
-      getAvailableYears(selectedSubject.id).then(setYears).finally(() => setLoadingYears(false));
+    if (!selectedSubject) {
+      setChapters([]); setTopics([]); setExams([]);
+      setSelectedChapter(null); setSelectedTopic(null);
+      return;
     }
-  }, [selectedSubject, examType]);
+    setChapters([]); setTopics([]); setExams([]);
+    setSelectedChapter(null); setSelectedTopic(null);
+    setLoadingChapters(true);
+    getChapters(selectedSubject.id).then(setChapters).finally(() => setLoadingChapters(false));
+  }, [selectedSubject]);
 
   useEffect(() => {
-    if (!selectedChapter) return;
-    setTopics([]); setSelectedTopic(null); setExams([]);
+    if (!selectedChapter) {
+      setTopics([]); setExams([]);
+      setSelectedTopic(null);
+      return;
+    }
+    setTopics([]); setExams([]);
+    setSelectedTopic(null);
     setLoadingTopics(true);
     getTopics(selectedChapter.id).then(setTopics).finally(() => setLoadingTopics(false));
   }, [selectedChapter]);
 
   useEffect(() => {
-    if (!selectedSubject || !examType) return;
-
-    if (examType === 'CHAPTER' && selectedChapter) {
-      loadExams();
-    } else if (examType === 'WIZARI' && selectedYear && selectedRound) {
-      loadExams();
-    }
-  }, [selectedChapter, selectedTopic, selectedYear, selectedRound]);
-
-  useEffect(() => {
-    if (!selectedSubject || examType !== 'WIZARI' || !selectedYear) return;
-    setRounds([]); setSelectedRound(null); setExams([]);
-    setLoadingRounds(true);
-    getAvailableRounds(selectedSubject.id, selectedYear).then(setRounds).finally(() => setLoadingRounds(false));
-  }, [selectedYear]);
+    loadExams();
+  }, [selectedSubject, selectedChapter, selectedTopic]);
 
   async function loadExams() {
-    if (!selectedSubject || !examType) return;
+    if (!selectedSubject || !selectedChapter || !selectedTopic) {
+      setExams([]);
+      return;
+    }
     setLoadingExams(true);
     try {
       const data = await getExams({
         subjectId: selectedSubject.id,
-        type: examType,
-        chapterId: selectedChapter?.id,
-        topicId: selectedTopic?.id,
-        year: selectedYear ?? undefined,
-        round: selectedRound ?? undefined,
+        type: 'CHAPTER',
+        chapterId: selectedChapter.id,
+        topicId: selectedTopic.id,
       });
       setExams(data);
     } finally {
@@ -231,107 +261,64 @@ export default function ExamsScreen() {
 
   function resetAll() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setSelectedSubject(null); setExamType(null);
-    setSelectedChapter(null); setSelectedTopic(null);
-    setSelectedYear(null); setSelectedRound(null);
+    setSelectedSubject(null); setSelectedChapter(null); setSelectedTopic(null);
     setExams([]); setOpenField(null);
   }
-
-  /* ─── Helpers ──────────────────────────────────── */
-  const isRoundDisabled = !selectedYear;
-
-  const getTypeLabel = (t: ExamType) => {
-    if (t === 'WIZARI') return 'وزاري شامل';
-    if (t === 'CHAPTER') return 'فصل محدد';
-    return null;
-  };
 
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={{ paddingHorizontal: pagePadding, paddingBottom: hp(4) }}
     >
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: hp(6), paddingBottom: hp(2) }]}>
+      <MotionView delay={0} style={[styles.header, { paddingTop: rs(25), paddingBottom: hp(2) }]}>
         <Text style={[styles.title, { fontSize: rs(22) }]}>الامتحانات</Text>
-        {(selectedSubject || examType) && (
-          <TouchableOpacity
+        {(selectedSubject || selectedChapter || selectedTopic) && (
+          <PressableScale
+            style={[styles.resetBtn, { paddingHorizontal: rs(12), paddingVertical: rs(6), borderRadius: rs(10), flexDirection: 'row', alignItems: 'center', gap: rs(4) }]}
             onPress={resetAll}
-            style={[styles.resetBtn, { paddingHorizontal: rs(12), paddingVertical: rs(6), borderRadius: rs(8) }]}
           >
-            <Ionicons name="refresh" size={rs(16)} color={Colors.primary} />
-            <Text style={[styles.resetText, { fontSize: rs(12), marginRight: rs(4) }]}>إعادة تعيين</Text>
-          </TouchableOpacity>
+            <Ionicons name="refresh" size={rs(14)} color={Colors.primary} />
+            <Text style={[styles.resetText, { fontSize: rs(12) }]}>إعادة تعيين</Text>
+          </PressableScale>
         )}
-      </View>
+      </MotionView>
 
-      {/* ── 1. Subject Field ─────────────────────── */}
-      <DropdownField
-        label="المادة"
-        icon="book-outline"
-        value={selectedSubject?.name || null}
-        placeholder="اختر المادة"
-        isOpen={openField === 'subject'}
-        onToggle={() => toggleField('subject')}
-        rs={rs}
-      >
-        {loadingSubjects ? (
-          <ActivityIndicator color={Colors.primary} style={{ marginVertical: rs(8) }} />
-        ) : (
-          subjects.map(s => (
-            <OptionItem
-              key={s.id}
-              label={s.name}
-              selected={selectedSubject?.id === s.id}
-              onPress={() => {
-                setSelectedSubject(s);
-                setExamType(null);
-                setOpenField('type');
-              }}
-              rs={rs}
-            />
-          ))
-        )}
-      </DropdownField>
-
-      {/* ── 2. Type Field ────────────────────────── */}
-      <DropdownField
-        label="النوع"
-        icon="layers-outline"
-        value={getTypeLabel(examType)}
-        placeholder="اختر نوع الامتحان"
-        disabled={!selectedSubject}
-        isOpen={openField === 'type'}
-        onToggle={() => toggleField('type')}
-        rs={rs}
-      >
-        <OptionItem
-          label="وزاري شامل"
-          selected={examType === 'WIZARI'}
-          onPress={() => {
-            setExamType('WIZARI');
-            setOpenField('year');
-          }}
+      <MotionView delay={80}>
+        <DropdownField
+          label="المادة"
+          icon="book-outline"
+          value={selectedSubject?.name || null}
+          placeholder="اختر المادة"
+          isOpen={openField === 'subject'}
+          onToggle={() => toggleField('subject')}
           rs={rs}
-        />
-        <OptionItem
-          label="فصل محدد"
-          selected={examType === 'CHAPTER'}
-          onPress={() => {
-            setExamType('CHAPTER');
-            setOpenField('chapter');
-          }}
-          rs={rs}
-        />
-      </DropdownField>
+        >
+          {loadingSubjects ? (
+            <ActivityIndicator color={Colors.primary} style={{ marginVertical: rs(8) }} />
+          ) : (
+            subjects.map(s => (
+              <OptionItem
+                key={s.id}
+                label={s.name}
+                selected={selectedSubject?.id === s.id}
+                onPress={() => {
+                  setSelectedSubject(s);
+                  setOpenField('chapter');
+                }}
+                rs={rs}
+              />
+            ))
+          )}
+        </DropdownField>
+      </MotionView>
 
-      {/* ── 3. Chapter Field (فصل محدد only) ─────── */}
-      {examType === 'CHAPTER' && (
+      <MotionView delay={110}>
         <DropdownField
           label="الفصل"
           icon="albums-outline"
           value={selectedChapter?.name || null}
           placeholder="اختر الفصل"
+          disabled={!selectedSubject}
           isOpen={openField === 'chapter'}
           onToggle={() => toggleField('chapter')}
           rs={rs}
@@ -339,9 +326,7 @@ export default function ExamsScreen() {
           {loadingChapters ? (
             <ActivityIndicator color={Colors.primary} style={{ marginVertical: rs(8) }} />
           ) : chapters.length === 0 ? (
-            <Text style={[fieldStyles.emptyText, { fontSize: rs(13), padding: rs(8) }]}>
-              لا توجد فصول متوفرة
-            </Text>
+            <Text style={[fieldStyles.emptyText, { fontSize: rs(13), padding: rs(8) }]}>لا توجد فصول متوفرة</Text>
           ) : (
             chapters.map(c => (
               <OptionItem
@@ -357,109 +342,31 @@ export default function ExamsScreen() {
             ))
           )}
         </DropdownField>
-      )}
+      </MotionView>
 
-      {/* ── 4. Topic Field (فصل محدد + chapter selected) */}
-      {examType === 'CHAPTER' && selectedChapter && (
+      <MotionView delay={140}>
         <DropdownField
           label="الموضوع"
           icon="document-text-outline"
-          value={selectedTopic?.name || 'الكل'}
+          value={selectedTopic?.name || null}
           placeholder="اختر الموضوع"
+          disabled={!selectedChapter}
           isOpen={openField === 'topic'}
           onToggle={() => toggleField('topic')}
           rs={rs}
         >
           {loadingTopics ? (
             <ActivityIndicator color={Colors.primary} style={{ marginVertical: rs(8) }} />
+          ) : topics.length === 0 ? (
+            <Text style={[fieldStyles.emptyText, { fontSize: rs(13), padding: rs(8) }]}>لا توجد مواضيع متوفرة</Text>
           ) : (
-            <>
+            topics.map(t => (
               <OptionItem
-                label="الكل"
-                selected={!selectedTopic}
+                key={t.id}
+                label={t.name}
+                selected={selectedTopic?.id === t.id}
                 onPress={() => {
-                  setSelectedTopic(null);
-                  setOpenField(null);
-                }}
-                rs={rs}
-              />
-              {topics.map(t => (
-                <OptionItem
-                  key={t.id}
-                  label={t.name}
-                  selected={selectedTopic?.id === t.id}
-                  onPress={() => {
-                    setSelectedTopic(t);
-                    setOpenField(null);
-                  }}
-                  rs={rs}
-                />
-              ))}
-            </>
-          )}
-        </DropdownField>
-      )}
-
-      {/* ── 5. Year Field (وزاري شامل only) ──────── */}
-      {examType === 'WIZARI' && (
-        <DropdownField
-          label="السنة"
-          icon="calendar-outline"
-          value={selectedYear ? `${selectedYear}` : null}
-          placeholder="اختر السنة"
-          isOpen={openField === 'year'}
-          onToggle={() => toggleField('year')}
-          rs={rs}
-        >
-          {loadingYears ? (
-            <ActivityIndicator color={Colors.primary} style={{ marginVertical: rs(8) }} />
-          ) : years.length === 0 ? (
-            <Text style={[fieldStyles.emptyText, { fontSize: rs(13), padding: rs(8) }]}>
-              لا توجد سنوات متوفرة
-            </Text>
-          ) : (
-            years.map(y => (
-              <OptionItem
-                key={y}
-                label={`${y}`}
-                selected={selectedYear === y}
-                onPress={() => {
-                  setSelectedYear(y);
-                  setOpenField('round');
-                }}
-                rs={rs}
-              />
-            ))
-          )}
-        </DropdownField>
-      )}
-
-      {/* ── 6. Round Field (وزاري شامل only) ──────── */}
-      {examType === 'WIZARI' && (
-        <DropdownField
-          label="الدور"
-          icon="repeat-outline"
-          value={selectedRound ? `الدور ${selectedRound}` : null}
-          placeholder={isRoundDisabled ? 'اختر السنة أولاً' : 'اختر الدور'}
-          disabled={isRoundDisabled}
-          isOpen={openField === 'round'}
-          onToggle={() => toggleField('round')}
-          rs={rs}
-        >
-          {loadingRounds ? (
-            <ActivityIndicator color={Colors.primary} style={{ marginVertical: rs(8) }} />
-          ) : rounds.length === 0 ? (
-            <Text style={[fieldStyles.emptyText, { fontSize: rs(13), padding: rs(8) }]}>
-              لا توجد أدوار متوفرة
-            </Text>
-          ) : (
-            rounds.map(r => (
-              <OptionItem
-                key={r}
-                label={`الدور ${r}`}
-                selected={selectedRound === r}
-                onPress={() => {
-                  setSelectedRound(r);
+                  setSelectedTopic(t);
                   setOpenField(null);
                 }}
                 rs={rs}
@@ -467,16 +374,13 @@ export default function ExamsScreen() {
             ))
           )}
         </DropdownField>
-      )}
+      </MotionView>
 
-
-
-      {/* ── Exams List ───────────────────────────── */}
-      {loadingExams && <ActivityIndicator color={Colors.primary} style={{ marginTop: rs(20) }} />}
+      {loadingExams && <ExamSkeleton count={3} rs={rs} />}
 
       {exams.length > 0 && (
-        <>
-          <View style={[styles.examsHeader, { marginTop: rs(8), marginBottom: rs(12) }]}>
+        <MotionView delay={180}>
+          <View style={[styles.examsHeader, { marginTop: rs(12), marginBottom: rs(12) }]}>
             <View style={[styles.examsHeaderLine, { backgroundColor: Colors.primary }]} />
             <Text style={[styles.examsHeaderText, { fontSize: rs(14), marginHorizontal: rs(10) }]}>
               الامتحانات المتوفرة ({exams.length})
@@ -484,81 +388,73 @@ export default function ExamsScreen() {
             <View style={[styles.examsHeaderLine, { backgroundColor: Colors.primary }]} />
           </View>
           {exams.map((exam, index) => (
-            <MotionView key={exam.id} delay={index * 45}>
-              <PressableScale
-                style={[styles.examCard, { padding: rs(16), marginBottom: rs(10), borderRadius: rs(14) }]}
-                onPress={() => router.push(`/exam/${exam.id}` as never)}
-              >
-                <View style={styles.examRow}>
-                  <View style={[styles.examIconBox, { width: rs(40), height: rs(40), borderRadius: rs(12), marginLeft: rs(12) }]}>
-                    <Ionicons name="document-text" size={rs(18)} color={Colors.primary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.examTitle, { fontSize: rs(15) }]}>{exam.title}</Text>
-                    <View style={[styles.examMetaRow, { marginTop: rs(4) }]}>
-                      <View style={styles.examMetaItem}>
-                        <Ionicons name="help-circle-outline" size={rs(13)} color={Colors.text.secondary} />
-                        <Text style={[styles.examMeta, { fontSize: rs(12), marginRight: rs(3) }]}>
-                          {exam._count.questions} سؤال
-                        </Text>
-                      </View>
-                      <View style={styles.examMetaItem}>
-                        <Ionicons name="time-outline" size={rs(13)} color={Colors.text.secondary} />
-                        <Text style={[styles.examMeta, { fontSize: rs(12), marginRight: rs(3) }]}>
-                          {exam.duration} دقيقة
-                        </Text>
-                      </View>
+            <PressableScale
+              key={exam.id}
+              style={[styles.examCard, { padding: rs(16), marginBottom: rs(10), borderRadius: rs(20) }]}
+              onPress={() => router.push(`/exam/${exam.id}` as never)}
+            >
+              <View style={styles.examRow}>
+                <View style={[styles.examIconBox, { width: rs(40), height: rs(40), borderRadius: rs(12), marginLeft: rs(12), backgroundColor: Colors.primarySoft, justifyContent: 'center', alignItems: 'center' }]}>
+                  <Ionicons name="document-text" size={rs(18)} color={Colors.primary} />
+                </View>
+                <View style={{ flex: 1, marginRight: rs(4) }}>
+                  <Text style={[styles.examTitle, { fontSize: rs(15) }]}>{exam.title}</Text>
+                  <View style={[styles.examMetaRow, { marginTop: rs(6) }]}>
+                    <View style={styles.examMetaItem}>
+                      <Ionicons name="help-circle-outline" size={rs(13)} color={Colors.text.secondary} />
+                      <Text style={[styles.examMeta, { fontSize: rs(12), marginRight: rs(4) }]}>{exam._count.questions} سؤال</Text>
+                    </View>
+                    <View style={[styles.examMetaItem, { marginRight: rs(10) }]}>
+                      <Ionicons name="time-outline" size={rs(13)} color={Colors.text.secondary} />
+                      <Text style={[styles.examMeta, { fontSize: rs(12), marginRight: rs(4) }]}>{exam.duration} دقيقة</Text>
                     </View>
                   </View>
-                  <View style={[styles.startExamBtn, { paddingHorizontal: rs(12), paddingVertical: rs(8), borderRadius: rs(8) }]}>
-                    <Text style={[styles.startExamBtnText, { fontSize: rs(12) }]}>ابدأ</Text>
-                  </View>
                 </View>
-              </PressableScale>
-            </MotionView>
+                <PressableScale 
+                  style={[styles.startExamBtn, { paddingHorizontal: rs(16), paddingVertical: rs(8), borderRadius: rs(12) }]}
+                  onPress={() => router.push(`/exam/${exam.id}` as never)}
+                >
+                  <Text style={[styles.startExamBtnText, { fontSize: rs(13) }]}>ابدأ</Text>
+                </PressableScale>
+              </View>
+            </PressableScale>
           ))}
-        </>
+        </MotionView>
       )}
 
-      {!loadingExams && exams.length === 0 && examType && (
-        examType === 'WIZARI' ? selectedRound : selectedChapter
-      ) ? (
-        <View style={[styles.empty, { marginTop: rs(24) }]}>
-          <Ionicons name="search-outline" size={rs(40)} color={Colors.text.disabled} />
-          <Text style={[styles.emptyText, { fontSize: rs(14), marginTop: rs(8) }]}>لا توجد امتحانات متوفرة</Text>
-          <Text style={[styles.emptySubText, { fontSize: rs(12), marginTop: rs(4) }]}>
-            جرب تغيير خيارات البحث
-          </Text>
-        </View>
-      ) : null}
+      {!loadingExams && exams.length === 0 && selectedTopic && (
+        <MotionView delay={180} style={[styles.empty, { marginTop: rs(24) }]}>
+          <Ionicons name="search-outline" size={rs(56)} color={Colors.text.disabled} />
+          <Text style={[styles.emptyTitle, { fontSize: rs(16), marginTop: rs(12), color: Colors.text.primary }]}>لا توجد امتحانات متوفرة</Text>
+          <Text style={[styles.emptySubText, { fontSize: rs(13), marginTop: rs(4) }]}>جرب اختيار فصل أو موضوع آخر</Text>
+        </MotionView>
+      )}
     </ScrollView>
   );
 }
 
-/* ─── Field Styles ───────────────────────────────── */
 const fieldStyles = StyleSheet.create({
   container: {
     backgroundColor: Colors.white,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: Colors.border,
     overflow: 'hidden',
-    elevation: 1,
     shadowColor: Colors.shadow,
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
+    shadowOpacity: 0.02,
+    shadowRadius: 16,
     shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   containerDisabled: {
     backgroundColor: Colors.surfaceMuted,
     borderColor: Colors.disabled,
-    elevation: 0,
     shadowOpacity: 0,
+    elevation: 0,
   },
   containerOpen: {
     borderColor: Colors.primary,
-    elevation: 3,
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    shadowOpacity: 0.04,
+    shadowRadius: 20,
   },
   header: {
     flexDirection: 'row',
@@ -580,16 +476,16 @@ const fieldStyles = StyleSheet.create({
   },
   label: {
     color: Colors.text.secondary,
-    fontWeight: '500',
+    fontFamily: 'Tajawal_500Medium',
     marginBottom: 2,
   },
   value: {
     color: Colors.text.primary,
-    fontWeight: '600',
+    fontFamily: 'Tajawal_700Bold',
   },
   placeholder: {
     color: Colors.text.disabled,
-    fontWeight: '400',
+    fontFamily: 'Tajawal_500Medium',
   },
   textDisabled: {
     color: Colors.text.disabled,
@@ -609,92 +505,65 @@ const fieldStyles = StyleSheet.create({
   },
   optionText: {
     color: Colors.text.primary,
-    fontWeight: '500',
+    fontFamily: 'Tajawal_500Medium',
   },
   optionTextSelected: {
     color: Colors.primary,
-    fontWeight: '600',
+    fontFamily: 'Tajawal_700Bold',
   },
   emptyText: {
     color: Colors.text.disabled,
     textAlign: 'center',
+    fontFamily: 'Tajawal_500Medium',
   },
 });
 
-/* ─── Page Styles ────────────────────────────────── */
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { color: Colors.text.primary, fontWeight: 'bold' },
+  title: { color: Colors.text.primary, fontFamily: 'Tajawal_800ExtraBold' },
   resetBtn: {
+    backgroundColor: Colors.secondary,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.primarySoft,
+    shadowColor: Colors.secondary,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
-  resetText: {
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  examsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  examsHeaderLine: {
-    flex: 1,
-    height: 1,
-    opacity: 0.2,
-  },
-  examsHeaderText: {
-    color: Colors.primary,
-    fontWeight: '600',
-  },
+  resetText: { color: Colors.primary, fontFamily: 'Tajawal_700Bold' },
+  examsHeader: { flexDirection: 'row', alignItems: 'center' },
+  examsHeaderLine: { flex: 1, height: 1, opacity: 0.2 },
+  examsHeaderText: { color: Colors.primary, fontFamily: 'Tajawal_700Bold' },
   examCard: {
     backgroundColor: Colors.white,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: Colors.border,
     shadowColor: Colors.shadow,
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.02,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
-  examRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  examIconBox: {
-    backgroundColor: Colors.primarySoft,
+  examRow: { flexDirection: 'row', alignItems: 'center' },
+  examIconBox: { justifyContent: 'center', alignItems: 'center' },
+  examTitle: { color: Colors.text.primary, fontFamily: 'Tajawal_700Bold' },
+  examMetaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 },
+  examMetaItem: { flexDirection: 'row', alignItems: 'center' },
+  examMeta: { color: Colors.text.secondary, fontFamily: 'Tajawal_500Medium' },
+  startExamBtn: {
+    backgroundColor: Colors.secondary,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: Colors.secondary,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
-  examTitle: {
-    color: Colors.text.primary,
-    fontWeight: '600',
-  },
-  examMetaRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  examMetaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  examMeta: {
-    color: Colors.text.secondary,
-  },
-  startExamBtn: {
-    backgroundColor: Colors.primary,
-  },
-  startExamBtnText: {
-    color: Colors.white,
-    fontWeight: '700',
-  },
-  empty: {
-    alignItems: 'center',
-  },
-  emptyText: {
-    color: Colors.text.secondary,
-    fontWeight: '500',
-  },
-  emptySubText: {
-    color: Colors.text.disabled,
-  },
+  startExamBtnText: { color: Colors.primary, fontFamily: 'Tajawal_700Bold' },
+  empty: { alignItems: 'center' },
+  emptyTitle: { color: Colors.text.primary, fontFamily: 'Tajawal_700Bold' },
+  emptySubText: { color: Colors.text.disabled, fontFamily: 'Tajawal_500Medium' },
 });

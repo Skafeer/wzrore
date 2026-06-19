@@ -1,7 +1,6 @@
 import { Pressable, PressableProps, StyleProp, ViewStyle } from 'react-native';
 import Animated, {
   FadeInUp,
-  LinearTransition,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -18,8 +17,7 @@ type MotionViewProps = {
 export function MotionView({ children, delay = 0, style }: MotionViewProps) {
   return (
     <Animated.View
-      entering={FadeInUp.duration(420).delay(delay).springify().damping(18)}
-      layout={LinearTransition.springify().damping(18)}
+      entering={FadeInUp.duration(300).delay(delay).springify().damping(20)}
       style={style}
     >
       {children}
@@ -43,11 +41,11 @@ export function PressableScale({ children, style, disabled, ...props }: Pressabl
       {...props}
       disabled={disabled}
       onPressIn={(event) => {
-        scale.value = withSpring(disabled ? 1 : 0.985, { damping: 18, stiffness: 260 });
+        scale.value = withSpring(disabled ? 1 : 0.97, { damping: 20, stiffness: 200 });
         props.onPressIn?.(event);
       }}
       onPressOut={(event) => {
-        scale.value = withSpring(1, { damping: 16, stiffness: 220 });
+        scale.value = withSpring(1, { damping: 18, stiffness: 180 });
         props.onPressOut?.(event);
       }}
       style={[style, animatedStyle]}
