@@ -9,17 +9,12 @@ export async function saveFcmToken(req: AuthRequest, res: Response): Promise<voi
     const userId = req.user!.id;
     const { token } = req.body;
 
-    if (!token) {
-      res.status(400).json({ success: false, message: 'التوكن مطلوب' });
-      return;
-    }
-
     await prisma.user.update({
       where: { id: userId },
-      data: { fcmToken: token },
+      data: { fcmToken: token ?? null },
     });
 
-    res.json({ success: true, message: 'تم حفظ التوكن' });
+    res.json({ success: true, message: token ? 'تم حفظ التوكن' : 'تم إلغاء الإشعارات' });
   } catch {
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
@@ -63,7 +58,6 @@ export async function adminSendToAll(req: Request, res: Response): Promise<void>
     const tokens = users.map(u => u.fcmToken!).filter(Boolean);
     const successCount = await sendNotificationToAll(tokens, title, body);
 
-    // حفظ سجل الإشعار
     await prisma.notification.create({
       data: {
         title,
