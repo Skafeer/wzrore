@@ -12,8 +12,11 @@ import { MotionView, PressableScale } from '../../components/motion';
 import { useState, useEffect } from 'react';
 import * as Notifications from 'expo-notifications';
 import { Platform as RNPlatform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { saveFcmToken } from '../../services/notification.service';
 import api from '../../services/api';
+
+const NOTIF_KEY = 'notifications_enabled';
 
 export default function AccountScreen() {
   const { rs, hp, pagePadding } = useResponsive();
@@ -28,8 +31,17 @@ export default function AccountScreen() {
 
   async function checkNotificationStatus() {
     if (RNPlatform.OS === 'web') return;
-    const { status } = await Notifications.getPermissionsAsync();
-    setNotificationsEnabled(status === 'granted' && !!user?.fcmToken);
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== 'granted') {
+        setNotificationsEnabled(false);
+        return;
+      }
+      const saved = await AsyncStorage.getItem(NOTIF_KEY);
+      setNotificationsEnabled(saved === 'true');
+    } catch {
+      setNotificationsEnabled(false);
+    }
   }
 
   async function toggleNotifications(value: boolean) {
@@ -40,17 +52,17 @@ export default function AccountScreen() {
         const { status } = await Notifications.requestPermissionsAsync();
         if (status !== 'granted') {
           Alert.alert('تنبيه', 'يرجى السماح بالإشعارات من إعدادات الجهاز');
-          setNotifLoading(false);
           return;
         }
         const tokenData = await Notifications.getExpoPushTokenAsync({
           projectId: '3315321a-f55a-4318-a8c1-bd658a5f66ad',
         });
         await saveFcmToken(tokenData.data);
+        await AsyncStorage.setItem(NOTIF_KEY, 'true');
         setNotificationsEnabled(true);
       } else {
-        // مسح التوكن من السيرفر
         await api.post('/notifications/fcm-token', { token: null });
+        await AsyncStorage.setItem(NOTIF_KEY, 'false');
         setNotificationsEnabled(false);
       }
     } catch {
@@ -136,15 +148,23 @@ export default function AccountScreen() {
       {RNPlatform.OS !== 'web' && (
         <MotionView delay={120} style={[styles.menuCard, { borderRadius: rs(16), marginBottom: rs(16) }]}>
           <View style={[styles.menuItem, { paddingVertical: rs(14), paddingHorizontal: rs(16) }]}>
-            <Ionicons name="notifications-outline" size={rs(20)} color={Colors.text.secondary} />
-            <Text style={[styles.menuLabel, { fontSize: rs(15), marginRight: rs(12) }]}>الإشعارات</Text>
+            <Ionicons
+              name={notificationsEnabled ? 'notifications' : 'notifications-outline'}
+              size={rs(20)}
+              color={notificationsEnabled ? Colors.primary : Colors.text.secondary}
+            />
+            <View style={{ marginRight: rs(12), flex: 1 }}>
+              <Text style={[styles.menuLabel, { fontSize: rs(15) }]}>الإشعارات</Text>
+              <Text style={{ fontSize: rs(11), color: Colors.text.disabled, marginTop: 2 }}>
+                {notificationsEnabled ? 'مفعّلة' : 'معطّلة'}
+              </Text>
+            </View>
             <Switch
               value={notificationsEnabled}
               onValueChange={toggleNotifications}
               disabled={notifLoading}
               trackColor={{ false: Colors.border, true: Colors.primary }}
-              thumbColor={notificationsEnabled ? Colors.white : Colors.white}
-              style={{ marginRight: 'auto' as any }}
+              thumbColor={Colors.white}
             />
           </View>
         </MotionView>
