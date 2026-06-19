@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
-import { sendNotification, sendNotificationToAll } from '../utils/firebase';
+import { sendNotification, sendNotificationToAll } from '../utils/push';
 import { AuthRequest } from '../types';
 
 // حفظ FCM Token
