@@ -1,7 +1,18 @@
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { saveFcmToken } from '../services/notification.service';
 import { useAuthStore } from '../store/auth.store';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 export function useNotifications() {
   const user = useAuthStore((s) => s.user);
@@ -11,30 +22,20 @@ export function useNotifications() {
 
     async function setupNotifications() {
       try {
-        const { default: messaging } = await import('@react-native-firebase/messaging');
-
         // طلب إذن الإشعارات
-        const authStatus = await messaging().requestPermission();
-        const enabled =
-          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status !== 'granted') return;
 
-        if (!enabled) return;
-
-        // جلب الـ FCM Token
-        const token = await messaging().getToken();
-        if (token) await saveFcmToken(token);
-
-        // تحديث الـ Token لو تغيّر
-        messaging().onTokenRefresh(async (newToken) => {
-          await saveFcmToken(newToken);
+        // جلب الـ Expo Push Token
+        const tokenData = await Notifications.getExpoPushTokenAsync({
+          projectId: '3315321a-f55a-4318-a8c1-bd658a5f66ad',
         });
 
-        // استقبال الإشعارات في الخلفية
-        messaging().setBackgroundMessageHandler(async () => {});
+        const token = tokenData.data;
+        if (token) await saveFcmToken(token);
 
-      } catch {
-        // Firebase ما يشتغل على الويب
+      } catch (err) {
+        console.log('Notifications setup error:', err);
       }
     }
 

@@ -14,8 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sawabedu",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "bundleIdentifier": "com.sawabedu"
     },
     "android": {
       "adaptiveIcon": {
@@ -32,8 +31,14 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "@react-native-firebase/app",
-      "@react-native-firebase/messaging"
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#1D4ED8",
+          "sounds": []
+        }
+      ]
     ],
     "scheme": "sawab",
     "experiments": {
