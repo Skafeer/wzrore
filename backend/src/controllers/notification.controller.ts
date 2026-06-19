@@ -25,22 +25,6 @@ export async function saveFcmToken(req: AuthRequest, res: Response): Promise<voi
   }
 }
 
-// حذف FCM Token
-export async function deleteFcmToken(req: AuthRequest, res: Response): Promise<void> {
-  try {
-    const userId = req.user!.id;
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: { fcmToken: null },
-    });
-
-    res.json({ success: true, message: 'تم حذف التوكن' });
-  } catch {
-    res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
-  }
-}
-
 // إرسال إشعار لطالب محدد
 export async function adminSendToUser(req: Request, res: Response): Promise<void> {
   try {
@@ -79,6 +63,7 @@ export async function adminSendToAll(req: Request, res: Response): Promise<void>
     const tokens = users.map(u => u.fcmToken!).filter(Boolean);
     const successCount = await sendNotificationToAll(tokens, title, body);
 
+    // حفظ سجل الإشعار
     await prisma.notification.create({
       data: {
         title,
