@@ -24,7 +24,7 @@
       "package": "com.sawabedu",
       "googleServicesFile": "./google-services.json",
       "notification": {
-        "icon": "./assets/android-icon-monochrome.png",
+        "icon": "./assets/icon.png",
         "color": "#1D4ED8"
       }
     },
@@ -34,7 +34,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/android-icon-monochrome.png",
+          "icon": "./assets/icon.png",
           "color": "#1D4ED8",
           "sounds": []
         }
