@@ -25,23 +25,16 @@ export default function AccountScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
 
-  useEffect(() => {
-    checkNotificationStatus();
-  }, []);
+  useEffect(() => { checkNotificationStatus(); }, []);
 
   async function checkNotificationStatus() {
     if (RNPlatform.OS === 'web') return;
     try {
       const { status } = await Notifications.getPermissionsAsync();
-      if (status !== 'granted') {
-        setNotificationsEnabled(false);
-        return;
-      }
+      if (status !== 'granted') { setNotificationsEnabled(false); return; }
       const saved = await AsyncStorage.getItem(NOTIF_KEY);
       setNotificationsEnabled(saved === 'true');
-    } catch {
-      setNotificationsEnabled(false);
-    }
+    } catch { setNotificationsEnabled(false); }
   }
 
   async function toggleNotifications(value: boolean) {
@@ -67,15 +60,12 @@ export default function AccountScreen() {
       }
     } catch {
       Alert.alert('خطأ', 'تعذر تغيير إعدادات الإشعارات');
-    } finally {
-      setNotifLoading(false);
-    }
+    } finally { setNotifLoading(false); }
   }
 
   function onLogout() {
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm('هل أنت متأكد من تسجيل الخروج؟');
-      if (confirmed) handleLogout();
+      if (window.confirm('هل أنت متأكد من تسجيل الخروج؟')) handleLogout();
     } else {
       Alert.alert('تسجيل الخروج', 'هل أنت متأكد؟', [
         { text: 'إلغاء', style: 'cancel' },
@@ -92,42 +82,54 @@ export default function AccountScreen() {
     { icon: 'help-circle-outline', label: 'التواصل مع الدعم', route: '/profile/support' },
   ];
 
+  const planLabel = (plan: string) =>
+    plan === 'WEEKLY' ? 'أسبوعي' : plan === 'MONTHLY' ? 'شهري' : 'سنوي';
+
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={{ paddingHorizontal: pagePadding, paddingBottom: hp(4) }}
     >
       {/* Header */}
-      <View style={[styles.header, { paddingTop: hp(6), paddingBottom: hp(2) }]}>
+      <MotionView delay={0} style={[styles.header, { paddingTop: hp(6), paddingBottom: hp(2) }]}>
         <Text style={[styles.title, { fontSize: rs(22) }]}>الحساب</Text>
-      </View>
+      </MotionView>
 
       {/* Profile Card */}
-      <MotionView delay={80} style={[styles.profileCard, { padding: rs(20), marginBottom: rs(20), borderRadius: rs(16) }]}>
+      <MotionView delay={80} style={[styles.profileCard, { padding: rs(20), marginBottom: rs(16), borderRadius: rs(20) }]}>
         <View style={styles.profileRow}>
-          {user?.avatar
-            ? <Image source={{ uri: user.avatar }} style={[styles.avatar, { width: rs(64), height: rs(64), borderRadius: rs(32) }]} />
-            : (
-              <View style={[styles.avatarPlaceholder, { width: rs(64), height: rs(64), borderRadius: rs(32) }]}>
-                <Text style={[styles.avatarText, { fontSize: rs(26) }]}>
-                  {user?.name?.charAt(0) ?? '؟'}
-                </Text>
-              </View>
-            )
-          }
+          {user?.avatar ? (
+            <Image
+              source={{ uri: user.avatar }}
+              style={[styles.avatar, { width: rs(64), height: rs(64), borderRadius: rs(32) }]}
+            />
+          ) : (
+            <View style={[styles.avatarPlaceholder, { width: rs(64), height: rs(64), borderRadius: rs(32) }]}>
+              <Text style={[styles.avatarText, { fontSize: rs(26) }]}>
+                {user?.name?.charAt(0) ?? '؟'}
+              </Text>
+            </View>
+          )}
           <View style={{ marginRight: rs(14), flex: 1 }}>
             <Text style={[styles.userName, { fontSize: rs(18) }]}>{user?.name}</Text>
-            <Text style={[styles.userUsername, { fontSize: rs(13) }]}>{user?.phone}</Text>
-            <Text style={[styles.userEmail, { fontSize: rs(12) }]}>{user?.province}</Text>
+            <Text style={[styles.userPhone, { fontSize: rs(13) }]}>{user?.phone}</Text>
+            <Text style={[styles.userProvince, { fontSize: rs(12) }]}>{user?.province}</Text>
           </View>
         </View>
 
         {/* Subscription Badge */}
-        <View style={[styles.subBadge, {
-          marginTop: rs(14), paddingVertical: rs(8),
-          paddingHorizontal: rs(14), borderRadius: rs(8),
-          backgroundColor: user?.subscription?.status === 'ACTIVE' ? '#DCFCE7' : Colors.background,
-        }]}>
+        <View style={[
+          styles.subBadge,
+          {
+            marginTop: rs(14),
+            paddingVertical: rs(10),
+            paddingHorizontal: rs(14),
+            borderRadius: rs(12),
+            backgroundColor: user?.subscription?.status === 'ACTIVE' ? '#DCFCE7' : Colors.background,
+            borderWidth: 1,
+            borderColor: user?.subscription?.status === 'ACTIVE' ? '#BBF7D0' : Colors.border,
+          }
+        ]}>
           <Ionicons
             name={user?.subscription?.status === 'ACTIVE' ? 'checkmark-circle' : 'time-outline'}
             size={rs(16)}
@@ -138,24 +140,31 @@ export default function AccountScreen() {
             color: user?.subscription?.status === 'ACTIVE' ? Colors.success : Colors.text.secondary,
           }]}>
             {user?.subscription?.status === 'ACTIVE'
-              ? `مشترك — ${user.subscription!.plan === 'WEEKLY' ? 'أسبوعي' : user.subscription!.plan === 'MONTHLY' ? 'شهري' : 'سنوي'}`
+              ? `مشترك — ${planLabel(user.subscription!.plan)}`
               : 'الحساب المجاني'}
           </Text>
+          {user?.subscription?.status === 'ACTIVE' && (
+            <Text style={[styles.subExpiry, { fontSize: rs(11) }]}>
+              ينتهي {new Date(user.subscription!.endDate).toLocaleDateString('ar-IQ')}
+            </Text>
+          )}
         </View>
       </MotionView>
 
       {/* Notifications Toggle */}
       {RNPlatform.OS !== 'web' && (
-        <MotionView delay={120} style={[styles.menuCard, { borderRadius: rs(16), marginBottom: rs(16) }]}>
-          <View style={[styles.menuItem, { paddingVertical: rs(14), paddingHorizontal: rs(16) }]}>
-            <Ionicons
-              name={notificationsEnabled ? 'notifications' : 'notifications-outline'}
-              size={rs(20)}
-              color={notificationsEnabled ? Colors.primary : Colors.text.secondary}
-            />
+        <MotionView delay={120} style={[styles.section, { borderRadius: rs(20), marginBottom: rs(12) }]}>
+          <View style={[styles.row, { paddingVertical: rs(14), paddingHorizontal: rs(16) }]}>
+            <View style={[styles.iconBox, { width: rs(36), height: rs(36), borderRadius: rs(10) }]}>
+              <Ionicons
+                name={notificationsEnabled ? 'notifications' : 'notifications-outline'}
+                size={rs(18)}
+                color={Colors.primary}
+              />
+            </View>
             <View style={{ marginRight: rs(12), flex: 1 }}>
-              <Text style={[styles.menuLabel, { fontSize: rs(15) }]}>الإشعارات</Text>
-              <Text style={{ fontSize: rs(11), color: Colors.text.disabled, marginTop: 2 }}>
+              <Text style={[styles.rowLabel, { fontSize: rs(15) }]}>الإشعارات</Text>
+              <Text style={[styles.rowSub, { fontSize: rs(11), marginTop: rs(1) }]}>
                 {notificationsEnabled ? 'مفعّلة' : 'معطّلة'}
               </Text>
             </View>
@@ -171,32 +180,38 @@ export default function AccountScreen() {
       )}
 
       {/* Menu */}
-      <MotionView delay={150} style={[styles.menuCard, { borderRadius: rs(16), marginBottom: rs(20) }]}>
+      <MotionView delay={150} style={[styles.section, { borderRadius: rs(20), marginBottom: rs(16) }]}>
         {menuItems.map((item, index) => (
           <PressableScale
             key={item.route}
             style={[
-              styles.menuItem,
+              styles.row,
               { paddingVertical: rs(14), paddingHorizontal: rs(16) },
-              index < menuItems.length - 1 && styles.menuItemBorder,
+              index < menuItems.length - 1 && styles.rowBorder,
             ]}
             onPress={() => router.push(item.route as never)}
           >
-            <Ionicons name={item.icon as never} size={rs(20)} color={Colors.text.secondary} />
-            <Text style={[styles.menuLabel, { fontSize: rs(15), marginRight: rs(12) }]}>{item.label}</Text>
-            <Ionicons name="chevron-back" size={rs(18)} color={Colors.text.disabled} style={{ marginRight: 'auto' }} />
+            <View style={[styles.iconBox, { width: rs(36), height: rs(36), borderRadius: rs(10) }]}>
+              <Ionicons name={item.icon as never} size={rs(18)} color={Colors.primary} />
+            </View>
+            <Text style={[styles.rowLabel, { fontSize: rs(15), marginRight: rs(12), flex: 1 }]}>
+              {item.label}
+            </Text>
+            <Ionicons name="chevron-back" size={rs(16)} color={Colors.text.disabled} />
           </PressableScale>
         ))}
       </MotionView>
 
       {/* Logout */}
-      <TouchableOpacity
-        style={[styles.logoutBtn, { paddingVertical: rs(14), borderRadius: rs(12) }]}
-        onPress={onLogout}
-      >
-        <Ionicons name="log-out-outline" size={rs(20)} color={Colors.error} />
-        <Text style={[styles.logoutText, { fontSize: rs(15) }]}>تسجيل الخروج</Text>
-      </TouchableOpacity>
+      <MotionView delay={200}>
+        <TouchableOpacity
+          style={[styles.logoutBtn, { paddingVertical: rs(14), borderRadius: rs(16) }]}
+          onPress={onLogout}
+        >
+          <Ionicons name="log-out-outline" size={rs(18)} color={Colors.error} />
+          <Text style={[styles.logoutText, { fontSize: rs(15) }]}>تسجيل الخروج</Text>
+        </TouchableOpacity>
+      </MotionView>
     </ScrollView>
   );
 }
@@ -205,20 +220,61 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: {},
   title: { color: Colors.text.primary, fontWeight: 'bold' },
-  profileCard: { backgroundColor: Colors.white, elevation: 2, shadowColor: Colors.shadow, shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
+
+  profileCard: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    elevation: 2,
+    shadowColor: Colors.shadow,
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+  },
   profileRow: { flexDirection: 'row', alignItems: 'center' },
   avatar: { resizeMode: 'cover' },
-  avatarPlaceholder: { backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center' },
+  avatarPlaceholder: {
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   avatarText: { color: Colors.white, fontWeight: 'bold' },
-  userName: { color: Colors.text.primary, fontWeight: 'bold' },
-  userUsername: { color: Colors.text.secondary, marginTop: 2 },
-  userEmail: { color: Colors.text.disabled, marginTop: 2 },
-  subBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  subText: { fontWeight: '600' },
-  menuCard: { backgroundColor: Colors.white, elevation: 2, shadowColor: Colors.shadow, shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, overflow: 'hidden' },
-  menuItem: { flexDirection: 'row', alignItems: 'center' },
-  menuItemBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
-  menuLabel: { color: Colors.text.primary, flex: 1 },
-  logoutBtn: { backgroundColor: '#FEF2F2', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  userName: { color: Colors.text.primary, fontWeight: '700' },
+  userPhone: { color: Colors.text.secondary, marginTop: 2 },
+  userProvince: { color: Colors.text.disabled, marginTop: 2 },
+  subBadge: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  subText: { fontWeight: '600', flex: 1 },
+  subExpiry: { color: Colors.text.disabled },
+
+  section: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: Colors.shadow,
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  rowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
+  iconBox: {
+    backgroundColor: Colors.primarySoft,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rowLabel: { color: Colors.text.primary, fontWeight: '500' },
+  rowSub: { color: Colors.text.disabled },
+
+  logoutBtn: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
   logoutText: { color: Colors.error, fontWeight: '600' },
 });
