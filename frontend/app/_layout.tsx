@@ -14,6 +14,9 @@ import {
   Tajawal_800ExtraBold 
 } from '@expo-google-fonts/tajawal';
 import { useFonts } from 'expo-font';
+// استيراد مكتبة المناطق الآمنة وألوان التطبيق
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { Colors } from '../constants/colors';
 
 I18nManager.forceRTL(true);
 
@@ -45,8 +48,8 @@ function RootLayoutNav() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1D4ED8' }}>
-        <ActivityIndicator size="large" color="#FFFFFF" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.primary }}>
+        <ActivityIndicator size="large" color={Colors.text.white} />
       </View>
     );
   }
@@ -78,16 +81,21 @@ export default function RootLayout() {
   // في حالة تحميل الخطوط، نعرض شاشة بدء بسيطة ومتناسقة مع الهوية البصرية
   if (!fontsLoaded) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1D4ED8' }}>
-        <ActivityIndicator size="large" color="#FFFFFF" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.primary }}>
+        <ActivityIndicator size="large" color={Colors.text.white} />
       </View>
     );
   }
 
   return (
     <QueryClientProvider client={queryClient}>
-      <StatusBar style="light" />
-      <RootLayoutNav />
+      {/* تغليف التطبيق كاملًا بـ SafeAreaProvider و SafeAreaView */}
+      <SafeAreaProvider>
+        <StatusBar style="light" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
+          <RootLayoutNav />
+        </SafeAreaView>
+      </SafeAreaProvider>
     </QueryClientProvider>
   );
 }

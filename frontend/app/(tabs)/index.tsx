@@ -101,7 +101,7 @@ export default function HomeScreen() {
           </View>
         </View>
         
-        <Text style={[styles.streakMsg, { fontSize: rs(11), marginBottom: rs(10) }]}>
+        <Text style={[styles.streakMsg, { fontSize: rs(11), marginBottom: rs(14) }]}>
           {getStreakMessage(user?.studyStreak ?? 0, completedToday)}
         </Text>
         
@@ -113,7 +113,7 @@ export default function HomeScreen() {
       {/* ─── بدء امتحان جديد ──────────────────────────────────────── */}
       <MotionView delay={120}>
         <PressableScale
-          style={[styles.card, { padding: rs(20), marginBottom: rs(20) }]}
+          style={[styles.card, { padding: rs(24), marginBottom: rs(20) }]}
           onPress={() => router.push('/(tabs)/exams')}
         >
           <View style={styles.cardHeader}>
@@ -125,8 +125,9 @@ export default function HomeScreen() {
               <Ionicons name="play-circle" size={rs(22)} color={Colors.primary} />
             </View>
           </View>
+
           <PressableScale 
-            style={[styles.ctaBtn, { paddingVertical: rs(14), borderRadius: rs(14) }]}
+            style={[styles.ctaBtn, { paddingVertical: rs(14), borderRadius: rs(14), marginTop: rs(16) }]}
             onPress={() => router.push('/(tabs)/exams')}
           >
             <Text style={[styles.ctaBtnText, { fontSize: rs(16) }]}>ابدأ الآن</Text>
@@ -136,13 +137,14 @@ export default function HomeScreen() {
 
       {/* ─── آخر امتحان ────────────────────────────────────────────── */}
       {lastExam && (
-        <MotionView delay={160} style={[styles.card, { padding: rs(20), marginBottom: rs(20) }]}>
+        <MotionView delay={160} style={[styles.card, { padding: rs(24), marginBottom: rs(20) }]}>
           <View style={[styles.cardHeader, { marginBottom: rs(14) }]}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.cardTextH3, { fontSize: rs(16) }]}>آخر امتحان</Text>
             </View>
-            <View style={[styles.cardIconSmall, { width: rs(36), height: rs(36), borderRadius: rs(10), backgroundColor: '#FFF7E6' }]}>
-              <Ionicons name="time-outline" size={rs(16)} color={Colors.secondary} />
+            {/* ✅ تم توحيد الأيقونة: نفس الحجم، نفس الخلفية الزرقاء الفاتحة، أيقونة زرقاء */}
+            <View style={[styles.cardIcon, { width: rs(48), height: rs(48), borderRadius: rs(14) }]}>
+              <Ionicons name="time-outline" size={rs(22)} color={Colors.primary} />
             </View>
           </View>
           
@@ -158,11 +160,11 @@ export default function HomeScreen() {
               </View>
             </View>
             
-            <View style={[styles.scoreBox, { paddingVertical: rs(6), paddingHorizontal: rs(18), borderRadius: rs(14), minWidth: rs(70) }]}>
+            <View style={[styles.scoreBox, { paddingVertical: rs(12), paddingHorizontal: rs(18), borderRadius: rs(14), minWidth: rs(70) }]}>
               <Text style={[styles.scoreNum, { fontSize: rs(22) }]}>
                 {lastExam.totalScore?.toFixed(0)}
               </Text>
-              <Text style={[styles.scoreMax, { fontSize: rs(10) }]}>من 100</Text>
+              <Text style={[styles.scoreMax, { fontSize: rs(10) }]}>من {lastExam.maxScore}</Text>
             </View>
           </View>
           
@@ -177,13 +179,14 @@ export default function HomeScreen() {
 
       {/* ─── ملخص الأداء ───────────────────────────────────────────── */}
       {performance && (
-        <MotionView delay={200} style={[styles.card, { padding: rs(20), marginBottom: 0 }]}>
+        <MotionView delay={200} style={[styles.card, { padding: rs(24), marginBottom: 0 }]}>
           <View style={[styles.cardHeader, { marginBottom: rs(16) }]}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.cardTextH3, { fontSize: rs(16) }]}>ملخص الأداء</Text>
             </View>
-            <View style={[styles.cardIconSmall, { width: rs(36), height: rs(36), borderRadius: rs(10) }]}>
-              <Ionicons name="bar-chart" size={rs(16)} color={Colors.primary} />
+            {/* ✅ تم توحيد الأيقونة: نفس الحجم، نفس الخلفية الزرقاء الفاتحة، أيقونة زرقاء */}
+            <View style={[styles.cardIcon, { width: rs(48), height: rs(48), borderRadius: rs(14) }]}>
+              <Ionicons name="bar-chart" size={rs(22)} color={Colors.primary} />
             </View>
           </View>
           
@@ -205,7 +208,6 @@ export default function HomeScreen() {
   );
 }
 
-// ─── التعديل الرئيسي هنا (إضافة fontFamily) ─────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -217,29 +219,28 @@ const styles = StyleSheet.create({
   avatarIcon: { backgroundColor: '#F1F5F9', borderRadius: 50, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
   
   // Streak
-  streakCard: { backgroundColor: Colors.primary, borderRadius: 20, padding: 20, shadowColor: Colors.primary, shadowOpacity: 0.15, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 5 },
+  streakCard: { backgroundColor: Colors.primary, borderRadius: 20, padding: 24, paddingBottom: 20, shadowColor: Colors.primary, shadowOpacity: 0.15, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 5 },
   streakTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   streakLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   streakIcon: { backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   streakData: { flexDirection: 'column' },
   streakNum: { color: Colors.secondary, fontFamily: 'Tajawal_800ExtraBold', lineHeight: 32 },
   streakLabel: { color: 'rgba(255,255,255,0.85)', fontFamily: 'Tajawal_500Medium' },
-  streakMsg: { color: 'rgba(255,255,255,0.6)', fontFamily: 'Tajawal_500Medium' },
+  streakMsg: { color: 'rgba(255,255,255,0.6)', fontFamily: 'Tajawal_500Medium', marginBottom: 14 },
   bestBadge: { backgroundColor: 'rgba(255,255,255,0.1)', flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
   bestBadgeSpan: { color: Colors.secondary, fontFamily: 'Tajawal_700Bold', marginHorizontal: 4 },
   bestBadgeSmall: { color: 'rgba(255,255,255,0.7)', fontFamily: 'Tajawal_500Medium' },
   streakProgress: { backgroundColor: 'rgba(255,255,255,0.15)', width: '100%', overflow: 'hidden' },
   streakProgressFill: { height: '100%', backgroundColor: Colors.secondary },
 
-  // Cards (Common)
-  card: { backgroundColor: Colors.surface, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, shadowColor: Colors.shadow, shadowOpacity: 0.02, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  // Cards
+  card: { backgroundColor: Colors.surface, borderRadius: 20, padding: 24, borderWidth: 1, borderColor: Colors.border, shadowColor: Colors.shadow, shadowOpacity: 0.02, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 16 },
   cardIcon: { backgroundColor: Colors.primarySoft, justifyContent: 'center', alignItems: 'center' },
-  cardIconSmall: { backgroundColor: Colors.surfaceMuted, justifyContent: 'center', alignItems: 'center' },
   cardTextH3: { color: Colors.text.primary, fontFamily: 'Tajawal_700Bold' },
   cardTextP: { color: Colors.text.secondary, fontFamily: 'Tajawal_500Medium' },
 
-  // CTA Button (Blue)
+  // CTA Button
   ctaBtn: { width: '100%', backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', shadowColor: '#0F3B8C', shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
   ctaBtnText: { color: Colors.text.white, fontFamily: 'Tajawal_700Bold' },
 
@@ -249,11 +250,11 @@ const styles = StyleSheet.create({
   examTitle: { color: Colors.text.secondary, fontFamily: 'Tajawal_500Medium', marginTop: 2 },
   examDate: { flexDirection: 'row', alignItems: 'center' },
   examDateText: { color: Colors.text.disabled, fontFamily: 'Tajawal_500Medium' },
-  scoreBox: { backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', shadowColor: Colors.primary, shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
+  scoreBox: { backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 18, borderRadius: 14, minWidth: 70, shadowColor: Colors.primary, shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
   scoreNum: { color: Colors.secondary, fontFamily: 'Tajawal_800ExtraBold', lineHeight: 22 },
   scoreMax: { color: Colors.white, opacity: 0.7, fontFamily: 'Tajawal_500Medium' },
 
-  // Secondary Button (Yellow)
+  // Secondary Button
   secondaryBtn: { width: '100%', backgroundColor: Colors.secondary, justifyContent: 'center', alignItems: 'center', shadowColor: Colors.secondary, shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   secondaryBtnText: { color: Colors.primary, fontFamily: 'Tajawal_700Bold' },
 

@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ESNext",
     "module": "ESNext",
-    "moduleResolution": "bundler", /* إصلاح تحذير node10 */
+    "moduleResolution": "bundler",
     "jsx": "react-native",
     "allowSyntheticDefaultImports": true,
     "allowImportingTsExtensions": true,
@@ -11,11 +11,17 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "strict": true,
-    "rootDir": ".", /* يعالج مسارات الملفات بشكل صحيح بدلاً من baseUrl */
+    "rootDir": ".",
     "paths": {
-      "@/*": ["./*"] 
+      "@/*": [
+        "./*"
+      ]
     },
-    "types": ["node", "react-native", "expo"]
+    "types": [
+      "node",
+      "react-native",
+      "expo"
+    ]
   },
   "include": [
     "**/*.ts",
@@ -23,5 +29,8 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ],
+  "extends": "expo/tsconfig.base"
 }
