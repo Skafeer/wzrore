@@ -1,6 +1,6 @@
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, Image, Alert, Platform, Switch,
+  StyleSheet, Image, Platform, Switch,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,12 +9,13 @@ import { useAuth } from '../../hooks/useAuth';
 import { useResponsive } from '../../hooks/useResponsive';
 import { Colors } from '../../constants/colors';
 import { MotionView, PressableScale } from '../../components/motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import { Platform as RNPlatform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { saveFcmToken } from '../../services/notification.service';
 import api from '../../services/api';
+import CustomAlert, { CustomAlertRef } from '../../components/CustomAlert';
 
 const NOTIF_KEY = 'notifications_enabled';
 
@@ -24,6 +25,7 @@ export default function AccountScreen() {
   const { handleLogout } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
+  const customAlertRef = useRef<CustomAlertRef>(null);
 
   useEffect(() => { checkNotificationStatus(); }, []);
 
@@ -44,7 +46,11 @@ export default function AccountScreen() {
       if (value) {
         const { status } = await Notifications.requestPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('تنبيه', 'يرجى السماح بالإشعارات من إعدادات الجهاز');
+          customAlertRef.current?.show({
+            title: 'تنبيه',
+            message: 'يرجى السماح بالإشعارات من إعدادات الجهاز',
+            buttons: [{ text: 'حسناً', style: 'default' }],
+          });
           return;
         }
         const tokenData = await Notifications.getExpoPushTokenAsync({
@@ -59,7 +65,11 @@ export default function AccountScreen() {
         setNotificationsEnabled(false);
       }
     } catch {
-      Alert.alert('خطأ', 'تعذر تغيير إعدادات الإشعارات');
+      customAlertRef.current?.show({
+        title: 'خطأ',
+        message: 'تعذر تغيير إعدادات الإشعارات',
+        buttons: [{ text: 'حاول مرة أخرى', style: 'cancel' }],
+      });
     } finally { setNotifLoading(false); }
   }
 
@@ -67,10 +77,14 @@ export default function AccountScreen() {
     if (Platform.OS === 'web') {
       if (window.confirm('هل أنت متأكد من تسجيل الخروج؟')) handleLogout();
     } else {
-      Alert.alert('تسجيل الخروج', 'هل أنت متأكد؟', [
-        { text: 'إلغاء', style: 'cancel' },
-        { text: 'خروج', style: 'destructive', onPress: handleLogout },
-      ]);
+      customAlertRef.current?.show({
+        title: 'تسجيل الخروج',
+        message: 'هل أنت متأكد من أنك تريد تسجيل الخروج؟',
+        buttons: [
+          { text: 'إلغاء', style: 'cancel' },
+          { text: 'خروج', style: 'destructive', onPress: handleLogout },
+        ],
+      });
     }
   }
 
@@ -198,14 +212,16 @@ export default function AccountScreen() {
       </MotionView>
 
       <MotionView delay={200}>
-        <TouchableOpacity
+        <PressableScale
           style={[styles.logoutBtn, { paddingVertical: rs(14), borderRadius: rs(16) }]}
           onPress={onLogout}
         >
           <Ionicons name="log-out-outline" size={rs(18)} color={Colors.primary} />
           <Text style={[styles.logoutText, { fontSize: rs(15) }]}>تسجيل الخروج</Text>
-        </TouchableOpacity>
+        </PressableScale>
       </MotionView>
+
+      <CustomAlert ref={customAlertRef} />
     </ScrollView>
   );
 }
