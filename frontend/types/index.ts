@@ -10,6 +10,7 @@ export interface User {
   bestStreak: number;
   streakFreeze: number;
   lastStudyDate?: string;
+  fcmToken?: string | null; // ✅ إضافة هذا السطر
   subscription?: Subscription | null;
 }
 

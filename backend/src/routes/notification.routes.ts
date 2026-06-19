@@ -1,11 +1,18 @@
 import { Router } from 'express';
 import { authMiddleware, adminMiddleware } from '../middleware/auth';
-import { saveFcmToken, adminSendToUser, adminSendToAll, adminGetNotifications } from '../controllers/notification.controller';
+import {
+  saveFcmToken,
+  deleteFcmToken,
+  adminSendToUser,
+  adminSendToAll,
+  adminGetNotifications,
+} from '../controllers/notification.controller';
 
 const router = Router();
 
 // Student
 router.post('/fcm-token', authMiddleware, saveFcmToken);
+router.delete('/fcm-token', authMiddleware, deleteFcmToken);
 
 // Admin
 router.post('/admin/send-to-user', adminMiddleware, adminSendToUser);
