@@ -7,6 +7,13 @@ import { useAuthStore } from '../store/auth.store';
 import { useEffect } from 'react';
 import * as Updates from 'expo-updates';
 import { useNotifications } from '../hooks/useNotifications';
+// استيراد خط Tajawal
+import { 
+  Tajawal_500Medium, 
+  Tajawal_700Bold, 
+  Tajawal_800ExtraBold 
+} from '@expo-google-fonts/tajawal';
+import { useFonts } from 'expo-font';
 
 I18nManager.forceRTL(true);
 
@@ -61,6 +68,22 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  // تحميل الخطوط قبل عرض المحتوى
+  const [fontsLoaded] = useFonts({
+    Tajawal_500Medium,
+    Tajawal_700Bold,
+    Tajawal_800ExtraBold,
+  });
+
+  // في حالة تحميل الخطوط، نعرض شاشة بدء بسيطة ومتناسقة مع الهوية البصرية
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1D4ED8' }}>
+        <ActivityIndicator size="large" color="#FFFFFF" />
+      </View>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <StatusBar style="light" />
