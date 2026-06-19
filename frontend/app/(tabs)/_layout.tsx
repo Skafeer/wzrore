@@ -12,15 +12,27 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.text.secondary,
-        tabBarStyle: {
-          backgroundColor: Colors.white,
-          borderTopColor: Colors.border,
-          height: rs(60),
-          paddingBottom: rs(8),
-        },
+        tabBarActiveBackgroundColor: Colors.primarySoft, // خلفية زرقاء فاتحة للتبويبة النشطة
         tabBarLabelStyle: {
           fontSize: rs(11),
-          fontWeight: '600',
+          fontWeight: '700',
+          fontFamily: 'Tajawal_700Bold',
+          marginTop: rs(2),
+        },
+        tabBarIconStyle: {
+          marginTop: rs(4),
+        },
+        tabBarStyle: {
+          backgroundColor: Colors.white,
+          borderTopWidth: 1,
+          borderTopColor: Colors.border,
+          height: rs(64), // زيادة بسيطة لراحة اللمس
+          paddingBottom: rs(6),
+          shadowColor: Colors.shadow,
+          shadowOpacity: 0.04,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: -4 },
+          elevation: 4,
         },
       }}
     >
@@ -28,8 +40,12 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'الرئيسية',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons 
+              name={focused ? 'home' : 'home-outline'} 
+              size={size} 
+              color={color} 
+            />
           ),
         }}
       />
@@ -37,8 +53,12 @@ export default function TabsLayout() {
         name="exams"
         options={{
           title: 'الامتحانات',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="book" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons 
+              name={focused ? 'book' : 'book-outline'} 
+              size={size} 
+              color={color} 
+            />
           ),
         }}
       />
@@ -46,8 +66,12 @@ export default function TabsLayout() {
         name="account"
         options={{
           title: 'الحساب',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons 
+              name={focused ? 'person' : 'person-outline'} 
+              size={size} 
+              color={color} 
+            />
           ),
         }}
       />

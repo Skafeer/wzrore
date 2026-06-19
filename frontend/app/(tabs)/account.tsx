@@ -90,12 +90,10 @@ export default function AccountScreen() {
       style={styles.container}
       contentContainerStyle={{ paddingHorizontal: pagePadding, paddingBottom: hp(4) }}
     >
-      {/* Header */}
       <MotionView delay={0} style={[styles.header, { paddingTop: hp(6), paddingBottom: hp(2) }]}>
         <Text style={[styles.title, { fontSize: rs(22) }]}>الحساب</Text>
       </MotionView>
 
-      {/* Profile Card */}
       <MotionView delay={80} style={[styles.profileCard, { padding: rs(20), marginBottom: rs(16), borderRadius: rs(20) }]}>
         <View style={styles.profileRow}>
           {user?.avatar ? (
@@ -110,14 +108,13 @@ export default function AccountScreen() {
               </Text>
             </View>
           )}
-          <View style={{ marginRight: rs(14), flex: 1 }}>
+          <View style={{ flex: 1, marginRight: rs(16) }}>
             <Text style={[styles.userName, { fontSize: rs(18) }]}>{user?.name}</Text>
             <Text style={[styles.userPhone, { fontSize: rs(13) }]}>{user?.phone}</Text>
             <Text style={[styles.userProvince, { fontSize: rs(12) }]}>{user?.province}</Text>
           </View>
         </View>
 
-        {/* Subscription Badge */}
         <View style={[
           styles.subBadge,
           {
@@ -151,7 +148,6 @@ export default function AccountScreen() {
         </View>
       </MotionView>
 
-      {/* Notifications Toggle */}
       {RNPlatform.OS !== 'web' && (
         <MotionView delay={120} style={[styles.section, { borderRadius: rs(20), marginBottom: rs(12) }]}>
           <View style={[styles.row, { paddingVertical: rs(14), paddingHorizontal: rs(16) }]}>
@@ -162,7 +158,7 @@ export default function AccountScreen() {
                 color={Colors.primary}
               />
             </View>
-            <View style={{ marginRight: rs(12), flex: 1 }}>
+            <View style={{ flex: 1, marginRight: rs(16) }}>
               <Text style={[styles.rowLabel, { fontSize: rs(15) }]}>الإشعارات</Text>
               <Text style={[styles.rowSub, { fontSize: rs(11), marginTop: rs(1) }]}>
                 {notificationsEnabled ? 'مفعّلة' : 'معطّلة'}
@@ -179,7 +175,6 @@ export default function AccountScreen() {
         </MotionView>
       )}
 
-      {/* Menu */}
       <MotionView delay={150} style={[styles.section, { borderRadius: rs(20), marginBottom: rs(16) }]}>
         {menuItems.map((item, index) => (
           <PressableScale
@@ -194,7 +189,7 @@ export default function AccountScreen() {
             <View style={[styles.iconBox, { width: rs(36), height: rs(36), borderRadius: rs(10) }]}>
               <Ionicons name={item.icon as never} size={rs(18)} color={Colors.primary} />
             </View>
-            <Text style={[styles.rowLabel, { fontSize: rs(15), marginRight: rs(12), flex: 1 }]}>
+            <Text style={[styles.rowLabel, { fontSize: rs(15), flex: 1, marginRight: rs(16) }]}>
               {item.label}
             </Text>
             <Ionicons name="chevron-back" size={rs(16)} color={Colors.text.disabled} />
@@ -202,13 +197,12 @@ export default function AccountScreen() {
         ))}
       </MotionView>
 
-      {/* Logout */}
       <MotionView delay={200}>
         <TouchableOpacity
           style={[styles.logoutBtn, { paddingVertical: rs(14), borderRadius: rs(16) }]}
           onPress={onLogout}
         >
-          <Ionicons name="log-out-outline" size={rs(18)} color={Colors.error} />
+          <Ionicons name="log-out-outline" size={rs(18)} color={Colors.primary} />
           <Text style={[styles.logoutText, { fontSize: rs(15) }]}>تسجيل الخروج</Text>
         </TouchableOpacity>
       </MotionView>
@@ -219,7 +213,7 @@ export default function AccountScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: {},
-  title: { color: Colors.text.primary, fontWeight: 'bold' },
+  title: { color: Colors.text.primary, fontWeight: 'bold', fontFamily: 'Tajawal_800ExtraBold' },
 
   profileCard: {
     backgroundColor: Colors.surface,
@@ -231,20 +225,20 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
   },
-  profileRow: { flexDirection: 'row', alignItems: 'center' },
+  profileRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   avatar: { resizeMode: 'cover' },
   avatarPlaceholder: {
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarText: { color: Colors.white, fontWeight: 'bold' },
-  userName: { color: Colors.text.primary, fontWeight: '700' },
-  userPhone: { color: Colors.text.secondary, marginTop: 2 },
-  userProvince: { color: Colors.text.disabled, marginTop: 2 },
-  subBadge: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  subText: { fontWeight: '600', flex: 1 },
-  subExpiry: { color: Colors.text.disabled },
+  avatarText: { color: Colors.white, fontWeight: 'bold', fontFamily: 'Tajawal_700Bold' },
+  userName: { color: Colors.text.primary, fontWeight: '700', fontFamily: 'Tajawal_800ExtraBold' },
+  userPhone: { color: Colors.text.secondary, marginTop: 2, fontFamily: 'Tajawal_500Medium' },
+  userProvince: { color: Colors.text.disabled, marginTop: 2, fontFamily: 'Tajawal_500Medium' },
+  subBadge: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  subText: { fontWeight: '600', flex: 1, fontFamily: 'Tajawal_700Bold' },
+  subExpiry: { color: Colors.text.disabled, fontFamily: 'Tajawal_500Medium' },
 
   section: {
     backgroundColor: Colors.surface,
@@ -257,24 +251,24 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
   },
-  row: { flexDirection: 'row', alignItems: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
   iconBox: {
     backgroundColor: Colors.primarySoft,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  rowLabel: { color: Colors.text.primary, fontWeight: '500' },
-  rowSub: { color: Colors.text.disabled },
+  rowLabel: { color: Colors.text.primary, fontWeight: '500', fontFamily: 'Tajawal_500Medium' },
+  rowSub: { color: Colors.text.disabled, fontFamily: 'Tajawal_500Medium' },
 
   logoutBtn: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: Colors.secondary,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: Colors.secondary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 16,
   },
-  logoutText: { color: Colors.error, fontWeight: '600' },
+  logoutText: { color: Colors.primary, fontWeight: '600', fontFamily: 'Tajawal_700Bold' },
 });
