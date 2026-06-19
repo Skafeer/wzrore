@@ -47,10 +47,13 @@ export function useResponsive(): ResponsiveMetrics {
   const shortSide = Math.min(width, height);
   const tablet = width >= 768 || shortSide >= 700;
   const desktop = Platform.OS === 'web' && width >= 1024;
-  const scale = clamp(width / BASE_WIDTH, MIN_SCALE, desktop ? 1.1 : MAX_SCALE);
-  const maxContentWidth = desktop ? 1080 : tablet ? 760 : width;
-  const contentWidth = Math.min(width, maxContentWidth);
-  const gutter = desktop ? 32 : tablet ? 28 : 20;
+  const scale = clamp(width / BASE_WIDTH, MIN_SCALE, desktop ? 1.2 : MAX_SCALE);
+
+  // حساب المسافات الجانبية (Gutter) بناءً على حجم الشاشة لتوزيع العناصر
+  const gutter = desktop ? 48 : tablet ? 32 : 20;
+  const pagePadding = gutter;
+  // السماح للمحتوى بأخذ كامل المساحة المتبقية
+  const contentWidth = width - (gutter * 2);
 
   return {
     wp: (percentage: number) => (width * percentage) / 100,
@@ -62,6 +65,6 @@ export function useResponsive(): ResponsiveMetrics {
     screenHeight: height,
     contentWidth,
     gutter,
-    pagePadding: Math.max((width - contentWidth) / 2 + gutter, gutter),
+    pagePadding,
   };
 }

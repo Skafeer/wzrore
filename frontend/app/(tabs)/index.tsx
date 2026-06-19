@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, RefreshControl, ActivityIndicator,
+  StyleSheet, RefreshControl, ActivityIndicator, Animated,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +11,6 @@ import { getProfile } from '../../services/user.service';
 import { useResponsive } from '../../hooks/useResponsive';
 import { Colors } from '../../constants/colors';
 import { LastExam, PerformanceSummary } from '../../types';
-import { MotionView, PressableScale } from '../../components/motion';
 
 function getStreakMessage(streak: number, completedToday: boolean): string {
   if (completedToday) return 'تم الحفاظ على السلسلة اليوم';
@@ -23,9 +22,38 @@ function getStreakMessage(streak: number, completedToday: boolean): string {
   return 'بقي امتحان واحد للحفاظ على السلسلة اليوم';
 }
 
+function getTimeBasedGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) {
+    return 'صباح النشاط،';
+  } else if (hour >= 12 && hour < 18) {
+    return 'مساء النشاط،';
+  } else {
+    return 'طاب مساؤك،';
+  }
+}
+
 export default function HomeScreen() {
   const { rs, hp, pagePadding } = useResponsive();
   const { user, updateUser } = useAuthStore();
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(15)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const [lastExam, setLastExam] = useState<LastExam | null>(null);
   const [performance, setPerformance] = useState<PerformanceSummary | null>(null);
@@ -65,31 +93,29 @@ export default function HomeScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
+    <Animated.ScrollView
+      style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
       contentContainerStyle={{ paddingHorizontal: pagePadding, paddingBottom: hp(4) }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} />}
     >
-      {/* ─── الرأس (Header) ────────────────────────────────────────── */}
-      <MotionView delay={0} style={[styles.header, { paddingTop: hp(6), paddingBottom: hp(2) }]}>
+      <View style={[styles.header, { paddingTop: rs(25), paddingBottom: hp(2) }]}>
         <View>
-          <Text style={[styles.greetingText, { fontSize: rs(14) }]}>صباح النشاط،</Text>
+          <Text style={[styles.greetingText, { fontSize: rs(14) }]}>{getTimeBasedGreeting()}</Text>
           <Text style={[styles.userName, { fontSize: rs(22) }]}>{user?.name}</Text>
         </View>
         <View style={[styles.avatarIcon, { width: rs(48), height: rs(48) }]}>
           <Ionicons name="person" size={rs(22)} color={Colors.primary} />
         </View>
-      </MotionView>
+      </View>
 
-      {/* ─── بطاقة السلسلة (Streak) ────────────────────────────────── */}
-      <MotionView delay={80} style={[styles.streakCard, { marginBottom: rs(24) }]}>
+      <View style={[styles.streakCard, { marginBottom: rs(24) }]}>
         <View style={styles.streakTop}>
           <View style={styles.streakLeft}>
             <View style={[styles.streakIcon, { width: rs(44), height: rs(44), borderRadius: rs(14) }]}>
               <Ionicons name="flame" size={rs(20)} color={Colors.secondary} />
             </View>
             <View style={styles.streakData}>
-              <Text style={[styles.streakNum, { fontSize: rs(32) }]}>{user?.studyStreak ?? 0}</Text>
+              <Text style={[styles.streakNum, { fontSize: rs(28) }]}>{user?.studyStreak ?? 0}</Text>
               <Text style={[styles.streakLabel, { fontSize: rs(13) }]}>يوم متواصل</Text>
             </View>
           </View>
@@ -108,43 +134,40 @@ export default function HomeScreen() {
         <View style={[styles.streakProgress, { height: rs(4), borderRadius: rs(4) }]}>
           <View style={[styles.streakProgressFill, { width: '60%', borderRadius: rs(4) }]} />
         </View>
-      </MotionView>
+      </View>
 
-      {/* ─── بدء امتحان جديد ──────────────────────────────────────── */}
-      <MotionView delay={120}>
-        <PressableScale
-          style={[styles.card, { padding: rs(24), marginBottom: rs(20) }]}
+      <TouchableOpacity
+        activeOpacity={0.85}
+        style={[styles.card, { padding: rs(24), marginBottom: rs(20) }]}
+        onPress={() => router.push('/(tabs)/exams')}
+      >
+        <View style={styles.cardHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.cardTextH3, { fontSize: rs(17) }]}>ابدأ امتحان جديد</Text>
+            <Text style={[styles.cardTextP, { fontSize: rs(13) }]}>اختر المادة وابدأ الامتحان</Text>
+          </View>
+          <View style={[styles.cardIcon, { width: rs(40), height: rs(40), borderRadius: rs(12) }]}>
+            <Ionicons name="play-circle" size={rs(18)} color={Colors.primary} />
+          </View>
+        </View>
+
+        <TouchableOpacity 
+          activeOpacity={0.85}
+          style={[styles.ctaBtn, { paddingVertical: rs(14), borderRadius: rs(14), marginTop: rs(16) }]}
           onPress={() => router.push('/(tabs)/exams')}
         >
-          <View style={styles.cardHeader}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.cardTextH3, { fontSize: rs(17) }]}>ابدأ امتحان جديد</Text>
-              <Text style={[styles.cardTextP, { fontSize: rs(13) }]}>اختر المادة وابدأ الامتحان</Text>
-            </View>
-            <View style={[styles.cardIcon, { width: rs(48), height: rs(48), borderRadius: rs(14) }]}>
-              <Ionicons name="play-circle" size={rs(22)} color={Colors.primary} />
-            </View>
-          </View>
+          <Text style={[styles.ctaBtnText, { fontSize: rs(16) }]}>ابدأ الآن</Text>
+        </TouchableOpacity>
+      </TouchableOpacity>
 
-          <PressableScale 
-            style={[styles.ctaBtn, { paddingVertical: rs(14), borderRadius: rs(14), marginTop: rs(16) }]}
-            onPress={() => router.push('/(tabs)/exams')}
-          >
-            <Text style={[styles.ctaBtnText, { fontSize: rs(16) }]}>ابدأ الآن</Text>
-          </PressableScale>
-        </PressableScale>
-      </MotionView>
-
-      {/* ─── آخر امتحان ────────────────────────────────────────────── */}
       {lastExam && (
-        <MotionView delay={160} style={[styles.card, { padding: rs(24), marginBottom: rs(20) }]}>
+        <View style={[styles.card, { padding: rs(24), marginBottom: rs(20) }]}>
           <View style={[styles.cardHeader, { marginBottom: rs(14) }]}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.cardTextH3, { fontSize: rs(16) }]}>آخر امتحان</Text>
             </View>
-            {/* ✅ تم توحيد الأيقونة: نفس الحجم، نفس الخلفية الزرقاء الفاتحة، أيقونة زرقاء */}
-            <View style={[styles.cardIcon, { width: rs(48), height: rs(48), borderRadius: rs(14) }]}>
-              <Ionicons name="time-outline" size={rs(22)} color={Colors.primary} />
+            <View style={[styles.cardIcon, { width: rs(40), height: rs(40), borderRadius: rs(12) }]}>
+              <Ionicons name="time-outline" size={rs(18)} color={Colors.primary} />
             </View>
           </View>
           
@@ -168,25 +191,24 @@ export default function HomeScreen() {
             </View>
           </View>
           
-          <PressableScale
+          <TouchableOpacity
+            activeOpacity={0.85}
             style={[styles.secondaryBtn, { paddingVertical: rs(12), borderRadius: rs(14), marginTop: rs(16) }]}
             onPress={() => router.push(`/result/${lastExam.sessionId}` as never)}
           >
             <Text style={[styles.secondaryBtnText, { fontSize: rs(14) }]}>عرض النتيجة الكاملة</Text>
-          </PressableScale>
-        </MotionView>
+          </TouchableOpacity>
+        </View>
       )}
 
-      {/* ─── ملخص الأداء ───────────────────────────────────────────── */}
       {performance && (
-        <MotionView delay={200} style={[styles.card, { padding: rs(24), marginBottom: 0 }]}>
+        <View style={[styles.card, { padding: rs(24), marginBottom: 0 }]}>
           <View style={[styles.cardHeader, { marginBottom: rs(16) }]}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.cardTextH3, { fontSize: rs(16) }]}>ملخص الأداء</Text>
             </View>
-            {/* ✅ تم توحيد الأيقونة: نفس الحجم، نفس الخلفية الزرقاء الفاتحة، أيقونة زرقاء */}
-            <View style={[styles.cardIcon, { width: rs(48), height: rs(48), borderRadius: rs(14) }]}>
-              <Ionicons name="bar-chart" size={rs(22)} color={Colors.primary} />
+            <View style={[styles.cardIcon, { width: rs(40), height: rs(40), borderRadius: rs(12) }]}>
+              <Ionicons name="bar-chart" size={rs(18)} color={Colors.primary} />
             </View>
           </View>
           
@@ -202,9 +224,9 @@ export default function HomeScreen() {
               <Text style={[styles.perfLabel, { fontSize: rs(12) }]}>متوسط الدرجات</Text>
             </View>
           </View>
-        </MotionView>
+        </View>
       )}
-    </ScrollView>
+    </Animated.ScrollView>
   );
 }
 
@@ -212,19 +234,17 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   
-  // Header
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   greetingText: { color: Colors.text.secondary, fontFamily: 'Tajawal_500Medium' },
   userName: { color: Colors.text.primary, fontFamily: 'Tajawal_800ExtraBold', marginTop: 2 },
   avatarIcon: { backgroundColor: '#F1F5F9', borderRadius: 50, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
   
-  // Streak
   streakCard: { backgroundColor: Colors.primary, borderRadius: 20, padding: 24, paddingBottom: 20, shadowColor: Colors.primary, shadowOpacity: 0.15, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 5 },
   streakTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   streakLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   streakIcon: { backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   streakData: { flexDirection: 'column' },
-  streakNum: { color: Colors.secondary, fontFamily: 'Tajawal_800ExtraBold', lineHeight: 32 },
+  streakNum: { color: Colors.secondary, fontFamily: 'Tajawal_800ExtraBold', lineHeight: 30 },
   streakLabel: { color: 'rgba(255,255,255,0.85)', fontFamily: 'Tajawal_500Medium' },
   streakMsg: { color: 'rgba(255,255,255,0.6)', fontFamily: 'Tajawal_500Medium', marginBottom: 14 },
   bestBadge: { backgroundColor: 'rgba(255,255,255,0.1)', flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
@@ -233,18 +253,15 @@ const styles = StyleSheet.create({
   streakProgress: { backgroundColor: 'rgba(255,255,255,0.15)', width: '100%', overflow: 'hidden' },
   streakProgressFill: { height: '100%', backgroundColor: Colors.secondary },
 
-  // Cards
   card: { backgroundColor: Colors.surface, borderRadius: 20, padding: 24, borderWidth: 1, borderColor: Colors.border, shadowColor: Colors.shadow, shadowOpacity: 0.02, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 16 },
   cardIcon: { backgroundColor: Colors.primarySoft, justifyContent: 'center', alignItems: 'center' },
   cardTextH3: { color: Colors.text.primary, fontFamily: 'Tajawal_700Bold' },
   cardTextP: { color: Colors.text.secondary, fontFamily: 'Tajawal_500Medium' },
 
-  // CTA Button
   ctaBtn: { width: '100%', backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', shadowColor: '#0F3B8C', shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
   ctaBtnText: { color: Colors.text.white, fontFamily: 'Tajawal_700Bold' },
 
-  // Last Exam
   examRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'stretch', gap: 12 },
   examSubject: { color: Colors.text.primary, fontFamily: 'Tajawal_700Bold' },
   examTitle: { color: Colors.text.secondary, fontFamily: 'Tajawal_500Medium', marginTop: 2 },
@@ -254,11 +271,9 @@ const styles = StyleSheet.create({
   scoreNum: { color: Colors.secondary, fontFamily: 'Tajawal_800ExtraBold', lineHeight: 22 },
   scoreMax: { color: Colors.white, opacity: 0.7, fontFamily: 'Tajawal_500Medium' },
 
-  // Secondary Button
   secondaryBtn: { width: '100%', backgroundColor: Colors.secondary, justifyContent: 'center', alignItems: 'center', shadowColor: Colors.secondary, shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   secondaryBtnText: { color: Colors.primary, fontFamily: 'Tajawal_700Bold' },
 
-  // Performance
   perfGrid: { flexDirection: 'row', gap: 12 },
   perfBox: { flex: 1, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', position: 'relative' },
   perfBoxBorder: { position: 'absolute', top: -1, backgroundColor: Colors.secondary },
