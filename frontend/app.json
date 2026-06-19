@@ -38,7 +38,8 @@
           "color": "#1D4ED8",
           "sounds": []
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "scheme": "sawab",
     "experiments": {
