@@ -61,7 +61,7 @@ function SubscriptionSkeleton({ rs, hp, paddingH }: { rs: (size: number) => numb
 
       <Animated.View style={[styles.howCard, { padding: rs(16), borderRadius: rs(14), marginBottom: rs(24), marginTop: rs(8), opacity }]}>
         <View style={{ width: '50%', height: rs(14), backgroundColor: Colors.border, borderRadius: rs(4), marginBottom: rs(8) }} />
-        {[1, 2, 3].map((_, index) => (
+        {[1, 2, 3, 4].map((_, index) => (
           <View key={index} style={{ width: '80%', height: rs(12), backgroundColor: Colors.border, borderRadius: rs(4), marginBottom: rs(4) }} />
         ))}
         <View style={{ width: '100%', height: rs(40), backgroundColor: Colors.border, borderRadius: rs(10), marginTop: rs(12) }} />
@@ -121,14 +121,13 @@ export default function SubscriptionScreen() {
   }
 
   async function onWhatsAppPress() {
-    const phone = '9647833730038'; // الرقم بصيغة دولية
+    const phone = '9647833730038';
     const name = user?.name || 'الاسم';
     const phoneNumber = user?.phone || 'رقم الهاتف';
     const province = user?.province || 'المحافظة';
     const plan = 'صواب بلس';
 
     const message = `مرحباً، أريد الاشتراك في باقة صواب بلس.\nالاسم: ${name}\nرقم الهاتف: ${phoneNumber}\nالمحافظة: ${province}\nالباقة: ${plan}`;
-
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
     try {
       await Linking.openURL(url);
@@ -150,6 +149,7 @@ export default function SubscriptionScreen() {
       style={styles.container}
       contentContainerStyle={{ paddingHorizontal: paddingH, paddingBottom: hp(4) }}
     >
+      {/* Header */}
       <MotionView delay={0} style={[styles.header, { paddingTop: hp(6), paddingBottom: hp(2) }]}>
         <PressableScale onPress={() => router.back()}>
           <Ionicons name="arrow-forward" size={rs(24)} color={Colors.text.primary} />
@@ -158,6 +158,7 @@ export default function SubscriptionScreen() {
         <View style={{ width: rs(24) }} />
       </MotionView>
 
+      {/* Active Subscription */}
       {isActive && (
         <MotionView delay={80} style={[styles.activeCard, { padding: rs(16), borderRadius: rs(14), marginBottom: rs(20) }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -173,47 +174,45 @@ export default function SubscriptionScreen() {
         </MotionView>
       )}
 
+      {/* الباقة المتاحة - تم إعادة تصميمها لتكون قوية وجذابة */}
       <MotionView delay={120}>
         <Text style={[styles.sectionTitle, { fontSize: rs(16), marginBottom: rs(12) }]}>الباقة المتاحة</Text>
         <MotionView delay={140}>
-          <PressableScale
-            style={[
-              styles.planCard,
-              { padding: rs(16), borderRadius: rs(14), marginBottom: rs(12), borderWidth: 2, borderColor: Colors.secondary },
-            ]}
-          >
+          <View style={[styles.planCard, { padding: rs(20), borderRadius: rs(16), marginBottom: rs(12), borderWidth: 2, borderColor: Colors.secondary, backgroundColor: Colors.surface }]}>
             <View style={styles.planRow}>
-              <View style={[styles.planIconBox, { width: rs(44), height: rs(44), borderRadius: rs(12), backgroundColor: Colors.primarySoft, justifyContent: 'center', alignItems: 'center' }]}>
-                <Ionicons name="star" size={rs(22)} color={Colors.secondary} />
+              {/* أيقونة باقة مميزة بخلفية صفراء فاتحة وأيقونة صفراء */}
+              <View style={[styles.planIconBox, { width: rs(56), height: rs(56), borderRadius: rs(16), backgroundColor: '#FFF7E6', justifyContent: 'center', alignItems: 'center' }]}>
+                <Ionicons name="star" size={rs(26)} color={Colors.secondary} />
               </View>
-              <View style={{ flex: 1, marginHorizontal: rs(12) }}>
-                <Text style={[styles.planLabel, { fontSize: rs(16) }]}>صواب بلس</Text>
-                <Text style={[styles.planDuration, { fontSize: rs(13) }]}>سنة كاملة</Text>
+              <View style={{ flex: 1, marginHorizontal: rs(16) }}>
+                <Text style={[styles.planLabel, { fontSize: rs(18) }]}>صواب بلس</Text>
+                <Text style={[styles.planDuration, { fontSize: rs(14) }]}>سنة كاملة</Text>
               </View>
-              <Text style={[styles.planPrice, { fontSize: rs(16) }]}>10,000 د.ع</Text>
+              {/* شارة السعر - خلفية صفراء صلبة ونص أزرق (مطابق لزر عرض النتيجة) */}
+              <View style={[styles.priceBox, { paddingVertical: rs(6), paddingHorizontal: rs(12), borderRadius: rs(10), backgroundColor: Colors.secondary }]}>
+                <Text style={[styles.planPrice, { fontSize: rs(16), color: Colors.primary }]}>10,000 د.ع</Text>
+              </View>
             </View>
-          </PressableScale>
+          </View>
         </MotionView>
       </MotionView>
 
+      {/* How to Subscribe */}
       <MotionView delay={200} style={[styles.howCard, { padding: rs(16), borderRadius: rs(14), marginBottom: rs(24), marginTop: rs(8) }]}>
         <Text style={[styles.howTitle, { fontSize: rs(14), marginBottom: rs(8) }]}>كيف تشترك؟</Text>
-        <View style={styles.howStepRow}>
-          <Ionicons name="call" size={rs(16)} color={Colors.primary} />
-          <Text style={[styles.howStep, { fontSize: rs(13), marginRight: rs(8) }]}>تواصل معنا عبر واتساب</Text>
-        </View>
-        <View style={styles.howStepRow}>
-          <Ionicons name="cash-outline" size={rs(16)} color={Colors.primary} />
-          <Text style={[styles.howStep, { fontSize: rs(13), marginRight: rs(8) }]}>ادفع قيمة الباقة (10,000 د.ع)</Text>
-        </View>
-        <View style={styles.howStepRow}>
-          <Ionicons name="key-outline" size={rs(16)} color={Colors.primary} />
-          <Text style={[styles.howStep, { fontSize: rs(13), marginRight: rs(8) }]}>احصل على كود الاشتراك</Text>
-        </View>
-        <View style={styles.howStepRow}>
-          <Ionicons name="checkmark-done-outline" size={rs(16)} color={Colors.primary} />
-          <Text style={[styles.howStep, { fontSize: rs(13), marginRight: rs(8) }]}>أدخل الكود أدناه وقم بتفعيله</Text>
-        </View>
+        {[
+          { icon: 'call', text: 'تواصل معنا عبر واتساب' },
+          { icon: 'cash-outline', text: 'ادفع قيمة الباقة (10,000 د.ع)' },
+          { icon: 'key-outline', text: 'احصل على كود الاشتراك' },
+          { icon: 'checkmark-done-outline', text: 'أدخل الكود أدناه وقم بتفعيله' },
+        ].map((step, index) => (
+          <View key={index} style={styles.howStepRow}>
+            <View style={[styles.howStepIconBox, { width: rs(36), height: rs(36), borderRadius: rs(10), backgroundColor: Colors.primarySoft, justifyContent: 'center', alignItems: 'center' }]}>
+              <Ionicons name={step.icon as any} size={rs(18)} color={Colors.primary} />
+            </View>
+            <Text style={[styles.howStep, { fontSize: rs(13), marginRight: rs(12) }]}>{step.text}</Text>
+          </View>
+        ))}
 
         <PressableScale
           style={[styles.whatsappBtn, { paddingVertical: rs(12), borderRadius: rs(10), marginTop: rs(12), backgroundColor: Colors.secondary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }]}
@@ -224,11 +223,15 @@ export default function SubscriptionScreen() {
         </PressableScale>
       </MotionView>
 
+      {/* Redeem Code */}
       <MotionView delay={240}>
         <Text style={[styles.sectionTitle, { fontSize: rs(16), marginBottom: rs(12) }]}>تفعيل كود الاشتراك</Text>
-        <View style={[styles.codeRow, { marginBottom: rs(8), flexDirection: 'row', gap: 8 }]}>
+        <View style={[styles.inputContainer, { height: hp(6.5), borderRadius: rs(12), marginBottom: rs(12) }]}>
+          <View style={[styles.inputIconBox, { width: rs(36), height: rs(36), borderRadius: rs(10), backgroundColor: Colors.primarySoft, justifyContent: 'center', alignItems: 'center' }]}>
+            <Ionicons name="key-outline" size={rs(18)} color={Colors.primary} />
+          </View>
           <TextInput
-            style={[styles.codeInput, { fontSize: rs(15), height: hp(6.5), flex: 1, backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 16, color: Colors.text.primary, textAlign: 'right' }]}
+            style={[styles.input, { fontSize: rs(15), flex: 1, textAlign: 'right', paddingHorizontal: rs(12) }]}
             placeholder="SAWAB-XXXX-XXXX-XXXX"
             placeholderTextColor={Colors.text.disabled}
             value={code}
@@ -262,20 +265,66 @@ const styles = StyleSheet.create({
   activeTitle: { color: Colors.success, fontFamily: 'Tajawal_700Bold' },
   activePlan: { color: Colors.success, marginTop: 2, fontFamily: 'Tajawal_500Medium' },
   sectionTitle: { color: Colors.text.primary, fontFamily: 'Tajawal_700Bold' },
-  planCard: { backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.border, elevation: 2, shadowColor: Colors.shadow, shadowOpacity: 0.02, shadowRadius: 16, shadowOffset: { width: 0, height: 4 } },
-  planIconBox: { justifyContent: 'center', alignItems: 'center' },
-  planRow: { flexDirection: 'row', alignItems: 'center' },
-  planLabel: { color: Colors.text.primary, fontFamily: 'Tajawal_700Bold' },
-  planDuration: { color: Colors.text.secondary, marginTop: 2, fontFamily: 'Tajawal_500Medium' },
-  planPrice: { color: Colors.primary, fontFamily: 'Tajawal_800ExtraBold' },
+
+  // ✅ أنماط الباقة الجديدة والمحسنة
+  planCard: { 
+    backgroundColor: Colors.white, 
+    borderWidth: 2, 
+    borderColor: Colors.secondary, 
+    elevation: 4, 
+    shadowColor: Colors.shadow, 
+    shadowOpacity: 0.08, 
+    shadowRadius: 12, 
+    shadowOffset: { width: 0, height: 6 } 
+  },
+  planRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 12, 
+  },
+  planIconBox: { 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  planLabel: { 
+    color: Colors.text.primary, 
+    fontFamily: 'Tajawal_800ExtraBold' 
+  },
+  planDuration: { 
+    color: Colors.text.secondary, 
+    marginTop: 2, 
+    fontFamily: 'Tajawal_500Medium' 
+  },
+  priceBox: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  planPrice: { 
+    fontFamily: 'Tajawal_700Bold' 
+  },
+
   howCard: { backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.border, elevation: 2, shadowColor: Colors.shadow, shadowOpacity: 0.02, shadowRadius: 16, shadowOffset: { width: 0, height: 4 } },
   howTitle: { color: Colors.text.primary, fontFamily: 'Tajawal_700Bold' },
-  howStepRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  howStepRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  howStepIconBox: { justifyContent: 'center', alignItems: 'center' },
   howStep: { color: Colors.text.secondary, fontFamily: 'Tajawal_500Medium' },
-  whatsappBtn: {  },
-  whatsappText: { fontFamily: 'Tajawal_700Bold' },
-  codeRow: {  },
-  codeInput: {  },
-  redeemBtn: {  },
-  redeemBtnText: { fontFamily: 'Tajawal_700Bold' },
+  whatsappBtn: { },
+  whatsappText: { color: Colors.primary, fontFamily: 'Tajawal_700Bold' },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    backgroundColor: Colors.white,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  inputIconBox: { justifyContent: 'center', alignItems: 'center' },
+  input: {
+    flex: 1,
+    color: Colors.text.primary,
+    fontFamily: 'Tajawal_500Medium',
+  },
+  redeemBtn: { justifyContent: 'center', alignItems: 'center' },
+  redeemBtnText: { color: Colors.white, fontFamily: 'Tajawal_700Bold' },
 });

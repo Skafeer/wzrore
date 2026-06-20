@@ -229,7 +229,8 @@ export default function AccountScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: {},
-  title: { color: Colors.text.primary, fontWeight: 'bold', fontFamily: 'Tajawal_800ExtraBold' },
+  // ✅ تم زيادة الوزن العريض إلى 900 ليكون "الحساب" عريضاً جداً
+  title: { color: Colors.text.primary, fontWeight: '900', fontFamily: 'Tajawal_800ExtraBold' },
 
   profileCard: {
     backgroundColor: Colors.surface,
