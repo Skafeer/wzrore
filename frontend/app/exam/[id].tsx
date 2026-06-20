@@ -64,7 +64,16 @@ export default function ExamScreen() {
         });
       }, 1000);
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string; requiresSubscription?: boolean; nextRenewal?: string } } };
+      // محاولة استخراج البيانات من الخطأ
+      const error = err as {
+        response?: {
+          data?: {
+            message?: string;
+            requiresSubscription?: boolean;
+            nextRenewal?: string;
+          };
+        };
+      };
       const data = error?.response?.data;
 
       if (data?.requiresSubscription) {
@@ -80,11 +89,12 @@ export default function ExamScreen() {
           else router.replace('/(tabs)/exams' as never);
         } else {
           customAlertRef.current?.show({
-            title: '🔒 انتهت امتحاناتك المجانية',
-            message: `${data.message}${nextRenewal ? `\n\n📅 تاريخ التجديد: ${nextRenewal}` : ''}`,
+            title: 'انتهت امتحاناتك المجانية',
+            message: `${data.message}${nextRenewal ? `\n\nتاريخ التجديد: ${nextRenewal}` : ''}`,
             buttons: [
               {
-                text: '⭐ اشترك الآن',
+                text: 'اشترك الآن',
+                style: 'default',
                 onPress: () => router.replace('/profile/subscription' as never),
               },
               {
@@ -96,9 +106,10 @@ export default function ExamScreen() {
           });
         }
       } else {
+        // في حالة عدم وجود requiresSubscription، نعرض خطأ عام
         customAlertRef.current?.show({
           title: 'خطأ',
-          message: 'تعذر بدء الامتحان',
+          message: data?.message || 'تعذر بدء الامتحان',
           buttons: [{ text: 'حسناً', style: 'default', onPress: () => router.replace('/(tabs)/exams' as never) }],
         });
       }
