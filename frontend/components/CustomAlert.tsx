@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { useResponsive } from '../hooks/useResponsive';
-import { Colors } from '../constants/colors'; 
+import { Colors } from '../constants/colors';
 import { MotionView } from './motion';
 
 export type AlertButton = {
