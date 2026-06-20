@@ -75,6 +75,10 @@ export default function ExamScreen() {
       };
       const data = error?.response?.data;
 
+      // ✅ التحقق من البيانات القادمة من الخادم
+      console.log('⚠️ خطأ من الخادم:', data);
+
+      // ✅ استخدام setTimeout لضمان أن الـ ref جاهز قبل العرض
       if (data?.requiresSubscription) {
         const nextRenewal = data.nextRenewal
           ? new Date(data.nextRenewal).toLocaleDateString('ar-IQ')
@@ -87,29 +91,33 @@ export default function ExamScreen() {
           if (goSub) router.replace('/profile/subscription' as never);
           else router.replace('/(tabs)/exams' as never);
         } else {
-          customAlertRef.current?.show({
-            title: 'انتهت امتحاناتك المجانية',
-            message: `${data.message}${nextRenewal ? `\n\nتاريخ التجديد: ${nextRenewal}` : ''}`,
-            buttons: [
-              {
-                text: 'اشترك الآن',
-                style: 'default',
-                onPress: () => router.replace('/profile/subscription' as never),
-              },
-              {
-                text: 'لاحقاً',
-                style: 'cancel',
-                onPress: () => router.replace('/(tabs)/exams' as never),
-              },
-            ],
-          });
+          setTimeout(() => {
+            customAlertRef.current?.show({
+              title: 'انتهت امتحاناتك المجانية',
+              message: `${data.message}${nextRenewal ? `\n\nتاريخ التجديد: ${nextRenewal}` : ''}`,
+              buttons: [
+                {
+                  text: 'اشترك الآن',
+                  style: 'default',
+                  onPress: () => router.replace('/profile/subscription' as never),
+                },
+                {
+                  text: 'لاحقاً',
+                  style: 'cancel',
+                  onPress: () => router.replace('/(tabs)/exams' as never),
+                },
+              ],
+            });
+          }, 300); // ✅ تأخير بسيط لضمان ظهور المودال
         }
       } else {
-        customAlertRef.current?.show({
-          title: 'خطأ',
-          message: data?.message || 'تعذر بدء الامتحان',
-          buttons: [{ text: 'حسناً', style: 'default', onPress: () => router.replace('/(tabs)/exams' as never) }],
-        });
+        setTimeout(() => {
+          customAlertRef.current?.show({
+            title: 'خطأ',
+            message: data?.message || 'تعذر بدء الامتحان',
+            buttons: [{ text: 'حسناً', style: 'default', onPress: () => router.replace('/(tabs)/exams' as never) }],
+          });
+        }, 300);
       }
     } finally {
       setLoading(false);
@@ -242,7 +250,6 @@ export default function ExamScreen() {
 
   return (
     <View style={styles.container}>
-      {/* ... باقي الـ JSX ... */}
       <View style={[styles.topBar, { paddingHorizontal: pagePadding, paddingTop: hp(4), paddingBottom: hp(2) }]}>
         <View style={[styles.timerBox, { flexDirection: 'row', alignItems: 'center', gap: rs(6), backgroundColor: '#FFF7E6', paddingHorizontal: rs(12), paddingVertical: rs(6), borderRadius: rs(20) }]}>
           <Ionicons name="time-outline" size={rs(16)} color={timeLeft < 300 ? Colors.error : Colors.secondary} />
@@ -270,7 +277,6 @@ export default function ExamScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: pagePadding, paddingVertical: rs(16) }}
       >
-        {/* باقي المحتوى... */}
         <MotionView delay={80} style={[styles.questionBox, { padding: rs(16), borderRadius: rs(14), marginBottom: rs(16), backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.border, shadowColor: Colors.shadow, shadowOpacity: 0.02, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 }]}>
           <Text style={[styles.questionText, { fontSize: rs(16), color: Colors.text.primary, fontFamily: 'Tajawal_500Medium', lineHeight: 26, textAlign: 'right' }]}>{currentQuestion?.text}</Text>
         </MotionView>
@@ -374,7 +380,6 @@ export default function ExamScreen() {
         </View>
       </View>
 
-      {/* ✅ تم نقل CustomAlert إلى خارج ScrollView ليعمل فوق الصفحة */}
       <CustomAlert ref={customAlertRef} />
     </View>
   );
