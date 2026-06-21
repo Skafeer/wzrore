@@ -5,7 +5,7 @@ import { ChevronRight, FileText, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function StudentExamsPage() {
-  const { id } = useParams<{ id: string }>(); // جلب معرف الطالب من الرابط
+  const { id } = useParams<{ id: string }>(); 
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
