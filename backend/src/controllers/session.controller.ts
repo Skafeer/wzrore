@@ -469,3 +469,47 @@ async function updateStudyStreak(userId: string): Promise<{
 }
 
 
+
+
+
+export async function adminGetUserSessions(req: any, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+
+    const sessions = await prisma.examSession.findMany({
+      where: { userId: id, isCompleted: true },
+      orderBy: { submittedAt: 'desc' },
+      include: {
+        exam: {
+          include: {
+            subject: { select: { name: true } },
+            chapter: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { name: true, phone: true },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        user,
+        sessions: sessions.map(s => ({
+          sessionId: s.id,
+          examTitle: s.exam.title,
+          subject: s.exam.subject.name,
+          chapter: s.exam.chapter?.name ?? null,
+          totalScore: s.totalScore,
+          maxScore: s.maxScore,
+          submittedAt: s.submittedAt,
+        })),
+      },
+    });
+  } catch {
+    res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
+  }
+}
