@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { getUsers, deleteUser, activateSubscription } from '../../services/user.service';
 import api from '../../utils/api';
 import type { User } from '../../types';
-import { Search, Trash2, CreditCard, Users, ChevronRight, ChevronLeft, Pencil } from 'lucide-react';
+import { Search, Trash2, CreditCard, Users, ChevronRight, ChevronLeft, Pencil, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const PROVINCES = [
@@ -50,12 +50,7 @@ export default function StudentsPage() {
 
   function openEdit(user: User) {
     setSelectedUser(user);
-    setEditForm({
-      name: user.name,
-      phone: user.phone,
-      province: user.province,
-      password: '',
-    });
+    setEditForm({ name: user.name, phone: user.phone, province: user.province, password: '' });
     setShowEditModal(true);
   }
 
@@ -88,6 +83,19 @@ export default function StudentsPage() {
       await activateSubscription(selectedUser.id, selectedPlan);
       await loadUsers();
       toast.success('تم تفعيل الاشتراك');
+      setShowSubModal(false);
+    } catch {
+      toast.error('حدث خطأ');
+    }
+  }
+
+  async function handleCancelSub() {
+    if (!selectedUser) return;
+    if (!confirm('هل أنت متأكد من إلغاء اشتراك هذا الطالب؟')) return;
+    try {
+      await api.put(`/subscriptions/admin/cancel/${selectedUser.id}`);
+      await loadUsers();
+      toast.success('تم إلغاء الاشتراك');
       setShowSubModal(false);
     } catch {
       toast.error('حدث خطأ');
@@ -165,9 +173,7 @@ export default function StudentsPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 font-bold text-xs">
-                            {user.name.charAt(0)}
-                          </span>
+                          <span className="text-blue-600 font-bold text-xs">{user.name.charAt(0)}</span>
                         </div>
                         <span className="font-medium text-gray-900">{user.name}</span>
                       </div>
@@ -201,13 +207,14 @@ export default function StudentsPage() {
                         <button
                           onClick={() => { setSelectedUser(user); setShowSubModal(true); }}
                           className="p-2 hover:bg-green-50 text-green-600 rounded-lg"
-                          title="تفعيل اشتراك"
+                          title="إدارة الاشتراك"
                         >
                           <CreditCard size={16} />
                         </button>
                         <button
                           onClick={() => handleDelete(user.id)}
                           className="p-2 hover:bg-red-50 text-red-600 rounded-lg"
+                          title="حذف الحساب"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -229,9 +236,7 @@ export default function StudentsPage() {
               >
                 <ChevronRight size={20} />
               </button>
-              <span className="text-sm text-gray-600">
-                صفحة {page} من {totalPages}
-              </span>
+              <span className="text-sm text-gray-600">صفحة {page} من {totalPages}</span>
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
@@ -296,18 +301,8 @@ export default function StudentsPage() {
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button
-                onClick={handleEdit}
-                className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl font-medium hover:bg-blue-700"
-              >
-                حفظ
-              </button>
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-medium hover:bg-gray-200"
-              >
-                إلغاء
-              </button>
+              <button onClick={handleEdit} className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl font-medium hover:bg-blue-700">حفظ</button>
+              <button onClick={() => setShowEditModal(false)} className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-medium hover:bg-gray-200">إلغاء</button>
             </div>
           </div>
         </div>
@@ -317,21 +312,38 @@ export default function StudentsPage() {
       {showSubModal && selectedUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <h2 className="text-lg font-bold text-gray-900 mb-1">تفعيل اشتراك</h2>
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-lg font-bold text-gray-900">إدارة الاشتراك</h2>
+              {selectedUser.subscription?.status === 'ACTIVE' && (
+                <button
+                  onClick={handleCancelSub}
+                  className="flex items-center gap-1 text-sm text-red-600 hover:text-red-700 font-medium"
+                >
+                  <XCircle size={16} />
+                  إلغاء الاشتراك
+                </button>
+              )}
+            </div>
             <p className="text-sm text-gray-500 mb-4">{selectedUser.name}</p>
+
+            {selectedUser.subscription?.status === 'ACTIVE' && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-4 text-sm text-green-700">
+                مشترك حالياً — {planLabel(selectedUser.subscription.plan)} — ينتهي {new Date(selectedUser.subscription.endDate).toLocaleDateString('ar-IQ')}
+              </div>
+            )}
+
+            <p className="text-sm font-medium text-gray-700 mb-3">تفعيل اشتراك جديد:</p>
             <div className="space-y-3 mb-6">
               {[
-                { key: 'WEEKLY', label: 'أسبوعي', sub: '7 أيام' },
-                { key: 'MONTHLY', label: 'شهري', sub: '30 يوم' },
-                { key: 'YEARLY', label: 'سنوي', sub: 'سنة كاملة' },
+                { key: 'WEEKLY', label: 'أسبوعي', sub: '7 أيام — 2,000 د.ع' },
+                { key: 'MONTHLY', label: 'شهري', sub: '30 يوم — 5,000 د.ع' },
+                { key: 'YEARLY', label: 'سنوي ⭐', sub: 'سنة كاملة — 10,000 د.ع' },
               ].map(plan => (
                 <button
                   key={plan.key}
                   onClick={() => setSelectedPlan(plan.key)}
                   className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-colors ${
-                    selectedPlan === plan.key
-                      ? 'border-blue-600 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                    selectedPlan === plan.key ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
                   <span className="font-medium text-gray-900">{plan.label}</span>
@@ -340,18 +352,8 @@ export default function StudentsPage() {
               ))}
             </div>
             <div className="flex gap-3">
-              <button
-                onClick={handleActivateSub}
-                className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl font-medium hover:bg-blue-700"
-              >
-                تفعيل
-              </button>
-              <button
-                onClick={() => setShowSubModal(false)}
-                className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-medium hover:bg-gray-200"
-              >
-                إلغاء
-              </button>
+              <button onClick={handleActivateSub} className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl font-medium hover:bg-blue-700">تفعيل</button>
+              <button onClick={() => setShowSubModal(false)} className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-medium hover:bg-gray-200">إغلاق</button>
             </div>
           </div>
         </div>
