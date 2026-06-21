@@ -7,16 +7,15 @@ import { useAuthStore } from '../store/auth.store';
 import { useEffect } from 'react';
 import * as Updates from 'expo-updates';
 import { useNotifications } from '../hooks/useNotifications';
-// استيراد خط Tajawal
-import { 
-  Tajawal_500Medium, 
-  Tajawal_700Bold, 
-  Tajawal_800ExtraBold 
+import {
+  Tajawal_500Medium,
+  Tajawal_700Bold,
+  Tajawal_800ExtraBold,
 } from '@expo-google-fonts/tajawal';
 import { useFonts } from 'expo-font';
-// استيراد مكتبة المناطق الآمنة وألوان التطبيق
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
+import { NetworkAlert } from '../components/NetworkAlert';
 
 I18nManager.forceRTL(true);
 
@@ -55,30 +54,31 @@ function RootLayoutNav() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(auth)" redirect={isAuthenticated} />
-      <Stack.Screen name="(tabs)" redirect={!isAuthenticated} />
-      <Stack.Screen name="exam/[id]" />
-      <Stack.Screen name="exam/report" />
-      <Stack.Screen name="result/[sessionId]" />
-      <Stack.Screen name="profile/edit" />
-      <Stack.Screen name="profile/password" />
-      <Stack.Screen name="profile/subscription" />
-      <Stack.Screen name="profile/privacy" />
-      <Stack.Screen name="profile/support" />
-    </Stack>
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" redirect={isAuthenticated} />
+        <Stack.Screen name="(tabs)" redirect={!isAuthenticated} />
+        <Stack.Screen name="exam/[id]" />
+        <Stack.Screen name="exam/report" />
+        <Stack.Screen name="result/[sessionId]" />
+        <Stack.Screen name="profile/edit" />
+        <Stack.Screen name="profile/password" />
+        <Stack.Screen name="profile/subscription" />
+        <Stack.Screen name="profile/privacy" />
+        <Stack.Screen name="profile/support" />
+      </Stack>
+      <NetworkAlert />
+    </>
   );
 }
 
 export default function RootLayout() {
-  // تحميل الخطوط قبل عرض المحتوى
   const [fontsLoaded] = useFonts({
     Tajawal_500Medium,
     Tajawal_700Bold,
     Tajawal_800ExtraBold,
   });
 
-  // في حالة تحميل الخطوط، نعرض شاشة بدء بسيطة ومتناسقة مع الهوية البصرية
   if (!fontsLoaded) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.primary }}>
@@ -89,7 +89,6 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* تغليف التطبيق كاملًا بـ SafeAreaProvider و SafeAreaView */}
       <SafeAreaProvider>
         <StatusBar style="light" />
         <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
