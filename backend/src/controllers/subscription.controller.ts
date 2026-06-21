@@ -112,7 +112,7 @@ export async function adminGetCodes(req: Request, res: Response): Promise<void> 
       success: true,
       data: codes.map(c => ({
         ...c,
-        code: c.plainCode ?? c.code, // عرض الكود الأصلي
+        code: c.plainCode ?? c.code,
       })),
     });
   } catch {
@@ -186,6 +186,21 @@ export async function adminActivateSubscription(req: Request, res: Response): Pr
     });
 
     res.json({ success: true, data: subscription });
+  } catch {
+    res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
+  }
+}
+
+export async function adminCancelSubscription(req: Request, res: Response): Promise<void> {
+  try {
+    const { userId } = req.params as { userId: string };
+
+    await prisma.subscription.update({
+      where: { userId },
+      data: { status: 'CANCELLED' },
+    });
+
+    res.json({ success: true, message: 'تم إلغاء الاشتراك' });
   } catch {
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
