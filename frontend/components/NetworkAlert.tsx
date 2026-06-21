@@ -1,123 +1,212 @@
-import { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import {
+  View, Text, StyleSheet, Modal, TouchableOpacity,
+  Animated, Platform,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { useResponsive } from '../hooks/useResponsive';
 
+const CHECK_URL = 'https://wzrore-production.up.railway.app/health';
+const CHECK_INTERVAL = 5000;
+
 export function NetworkAlert() {
   const { rs } = useResponsive();
-  const [isOnline, setIsOnline] = useState(true);
-  const [showBanner, setShowBanner] = useState(false);
-  const [message, setMessage] = useState('');
-  const translateY = useRef(new Animated.Value(-100)).current;
-  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  function showBannerAnimated(msg: string) {
-    setMessage(msg);
-    setShowBanner(true);
-    Animated.spring(translateY, {
-      toValue: 0,
-      damping: 18,
-      stiffness: 200,
-      useNativeDriver: true,
-    }).start();
-  }
-
-  function hideBannerAnimated() {
-    Animated.timing(translateY, {
-      toValue: -100,
-      duration: 300,
-      useNativeDriver: true,
-    }).start(() => setShowBanner(false));
-  }
-
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      // Web
-      function handleOnline() {
-        setIsOnline(true);
-        showBannerAnimated('عادت الاتصال بالإنترنت ✓');
-        if (hideTimer.current) clearTimeout(hideTimer.current);
-        hideTimer.current = setTimeout(hideBannerAnimated, 2500);
+  const checkConnection = useCallback(async () => {
+    try {
+      const res = await fetch(CHECK_URL, { method: 'HEAD' });
+      if (res.ok) {
+        setIsOffline(false);
+      } else {
+        setIsOffline(true);
       }
-
-      function handleOffline() {
-        setIsOnline(false);
-        if (hideTimer.current) clearTimeout(hideTimer.current);
-        showBannerAnimated('لا يوجد اتصال بالإنترنت');
-      }
-
-      window.addEventListener('online', handleOnline);
-      window.addEventListener('offline', handleOffline);
-      return () => {
-        window.removeEventListener('online', handleOnline);
-        window.removeEventListener('offline', handleOffline);
-      };
-    } else {
-      // Mobile — نستخدم fetch للتحقق
-      let interval: ReturnType<typeof setInterval>;
-
-      async function checkConnection() {
-        try {
-          await fetch('https://wzrore-production.up.railway.app/health', {
-            method: 'HEAD',
-          });
-          if (!isOnline) {
-            setIsOnline(true);
-            showBannerAnimated('عادت الاتصال بالإنترنت ✓');
-            if (hideTimer.current) clearTimeout(hideTimer.current);
-            hideTimer.current = setTimeout(hideBannerAnimated, 2500);
-          }
-        } catch {
-          if (isOnline) {
-            setIsOnline(false);
-            if (hideTimer.current) clearTimeout(hideTimer.current);
-            showBannerAnimated('لا يوجد اتصال بالإنترنت');
-          }
-        }
-      }
-
-      interval = setInterval(checkConnection, 5000);
-      return () => clearInterval(interval);
+    } catch {
+      setIsOffline(true);
     }
-  }, [isOnline]);
+  }, []);
 
-  if (!showBanner) return null;
+  // فحص عند البدء
+  useEffect(() => {
+    checkConnection();
+  }, []);
+
+  // فحص دوري
+  useEffect(() => {
+    intervalRef.current = setInterval(checkConnection, CHECK_INTERVAL);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [checkConnection]);
+
+  // Web events
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+
+    const handleOffline = () => setIsOffline(true);
+    const handleOnline = () => checkConnection();
+
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [checkConnection]);
+
+  // Animation
+  useEffect(() => {
+    if (isOffline) {
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          damping: 16,
+          stiffness: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 0.8,
+          damping: 16,
+          stiffness: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [isOffline]);
+
+  async function handleRetry() {
+    setChecking(true);
+    await checkConnection();
+    setChecking(false);
+  }
 
   return (
-    <Animated.View
-      style={[
-        styles.banner,
-        { transform: [{ translateY }], paddingVertical: rs(10), paddingHorizontal: rs(16) },
-        isOnline ? styles.bannerOnline : styles.bannerOffline,
-      ]}
+    <Modal
+      visible={isOffline}
+      transparent
+      animationType="none"
+      statusBarTranslucent
     >
-      <Ionicons
-        name={isOnline ? 'wifi' : 'wifi-outline'}
-        size={rs(18)}
-        color={Colors.white}
-      />
-      <Text style={[styles.text, { fontSize: rs(13) }]}>{message}</Text>
-    </Animated.View>
+      <Animated.View style={[styles.overlay, { opacity: opacityAnim }]}>
+        <Animated.View style={[
+          styles.card,
+          {
+            padding: rs(28),
+            borderRadius: rs(24),
+            transform: [{ scale: scaleAnim }],
+          },
+        ]}>
+          {/* أيقونة */}
+          <View style={[styles.iconBox, { width: rs(72), height: rs(72), borderRadius: rs(36), marginBottom: rs(16) }]}>
+            <Ionicons name="wifi-outline" size={rs(36)} color={Colors.error} />
+          </View>
+
+          {/* العنوان */}
+          <Text style={[styles.title, { fontSize: rs(20), marginBottom: rs(8) }]}>
+            لا يوجد اتصال
+          </Text>
+
+          {/* الرسالة */}
+          <Text style={[styles.message, { fontSize: rs(14), marginBottom: rs(24) }]}>
+            تحقق من اتصالك بالإنترنت وحاول مجدداً
+          </Text>
+
+          {/* زر إعادة المحاولة */}
+          <TouchableOpacity
+            style={[styles.retryBtn, { paddingVertical: rs(14), borderRadius: rs(14), width: '100%' }]}
+            onPress={handleRetry}
+            disabled={checking}
+            activeOpacity={0.85}
+          >
+            {checking ? (
+              <View style={styles.retryRow}>
+                <Ionicons name="reload-outline" size={rs(18)} color={Colors.white} />
+                <Text style={[styles.retryText, { fontSize: rs(15) }]}>جاري الفحص...</Text>
+              </View>
+            ) : (
+              <View style={styles.retryRow}>
+                <Ionicons name="refresh-outline" size={rs(18)} color={Colors.white} />
+                <Text style={[styles.retryText, { fontSize: rs(15) }]}>إعادة المحاولة</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </Animated.View>
+      </Animated.View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  banner: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  card: {
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 340,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
+  },
+  iconBox: {
+    backgroundColor: '#FEF2F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  title: {
+    color: Colors.text.primary,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  message: {
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  retryBtn: {
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: Colors.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  retryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 8,
-    zIndex: 9999,
   },
-  bannerOffline: { backgroundColor: '#DC2626' },
-  bannerOnline: { backgroundColor: '#16A34A' },
-  text: {
+  retryText: {
     color: Colors.white,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
