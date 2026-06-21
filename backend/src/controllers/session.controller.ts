@@ -467,3 +467,29 @@ async function updateStudyStreak(userId: string): Promise<{
 
   return { newStreak, bestStreak: newBestStreak, isNewBest, alreadyCompletedToday: false };
 }
+
+
+// ═══ ADMIN: جلب جميع جلسات امتحان طالب معين ═══
+// ✅ تم تغيير نوع req إلى any لحل مشكلة التوافق مع authMiddleware
+export async function adminGetUserSessions(req: any, res: Response): Promise<void> {
+  try {
+    const userId = req.params.userId;
+
+    const sessions = await prisma.examSession.findMany({
+      where: { userId },
+      include: {
+        exam: {
+          include: {
+            subject: { select: { name: true } },
+          },
+        },
+        user: { select: { name: true, phone: true } },
+      },
+      orderBy: { submittedAt: 'desc' },
+    });
+
+    res.json({ success: true, data: sessions });
+  } catch {
+    res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
+  }
+}
