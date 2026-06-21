@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // ✅ استيراد useNavigate
 import { getUsers, deleteUser, activateSubscription } from '../../services/user.service';
 import api from '../../utils/api';
 import type { User } from '../../types';
@@ -13,6 +14,8 @@ const PROVINCES = [
 ];
 
 export default function StudentsPage() {
+  const navigate = useNavigate(); // ✅ تعريف دالة التنقل
+
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -175,7 +178,13 @@ export default function StudentsPage() {
                         <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                           <span className="text-blue-600 font-bold text-xs">{user.name.charAt(0)}</span>
                         </div>
-                        <span className="font-medium text-gray-900">{user.name}</span>
+                        {/* ✅ تم تحويل الاسم إلى زر قابل للنقر */}
+                        <button
+                          onClick={() => navigate(`/students/${user.id}/sessions`)}
+                          className="font-medium text-gray-900 hover:text-blue-600 hover:underline transition-colors"
+                        >
+                          {user.name}
+                        </button>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-600">{user.phone}</td>

@@ -4,6 +4,7 @@ import { authMiddleware } from '../middleware/auth';
 import {
   startExam, saveAnswer, submitExam,
   getResult, getLastExam, getPerformanceSummary,
+  adminGetUserSessions,
 } from '../controllers/session.controller';
 
 const upload = multer({ storage: multer.memoryStorage() });

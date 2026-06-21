@@ -5,6 +5,7 @@ import { getProfile, updateProfile, changePassword, adminGetUsers, adminUpdateUs
 import { createReport, adminGetReports, adminUpdateReport, adminDeleteReport } from '../controllers/report.controller';
 import { adminGetStats } from '../controllers/stats.controller';
 import { adminGetAdmins, adminCreateAdmin, adminUpdateAdmin, adminDeleteAdmin } from '../controllers/admin.controller';
+import { adminGetUserSessions } from '../controllers/session.controller';
 
 const upload = multer({ storage: multer.memoryStorage() });
 const router = Router();
@@ -14,7 +15,7 @@ router.get('/profile', authMiddleware, getProfile);
 router.put('/profile', authMiddleware, upload.single('avatar'), updateProfile);
 router.put('/password', authMiddleware, changePassword);
 router.post('/reports', authMiddleware, createReport);
-
+router.get('/admin/users/:id/sessions', adminMiddleware, requirePermission('students'), adminGetUserSessions);
 // Admin - Users
 router.get('/admin/users', adminMiddleware, requirePermission('students'), adminGetUsers);
 router.put('/admin/users/:id', adminMiddleware, requirePermission('students'), adminUpdateUser);
