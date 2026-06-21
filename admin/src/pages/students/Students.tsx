@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // ✅ استيراد useNavigate
 import { getUsers, deleteUser, activateSubscription } from '../../services/user.service';
 import api from '../../utils/api';
 import type { User } from '../../types';
@@ -14,8 +13,6 @@ const PROVINCES = [
 ];
 
 export default function StudentsPage() {
-  const navigate = useNavigate(); // ✅ تعريف دالة التنقل
-
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -172,19 +169,13 @@ export default function StudentsPage() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {users.map(user => (
-                  <tr
-                    key={user.id}
-                    className="hover:bg-gray-50 cursor-pointer" // ✅ تمت إضافة cursor-pointer
-                    onClick={() => navigate(`/students/${user.id}/exams`)} // ✅ التنقل عند النقر على الصف
-                  >
+                  <tr key={user.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                           <span className="text-blue-600 font-bold text-xs">{user.name.charAt(0)}</span>
                         </div>
-                        <span className="font-medium text-gray-900 hover:text-blue-600 transition-colors">
-                          {user.name}
-                        </span>
+                        <span className="font-medium text-gray-900">{user.name}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-600">{user.phone}</td>

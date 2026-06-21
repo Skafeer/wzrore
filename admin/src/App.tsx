@@ -7,7 +7,6 @@ import DashboardPage from './pages/stats/Dashboard';
 import SubjectsPage from './pages/subjects/Subjects';
 import ExamsPage from './pages/exams/Exams';
 import StudentsPage from './pages/students/Students';
-import StudentExamsPage from './pages/students/StudentExamsPage'; 
 import SubscriptionsPage from './pages/subscriptions/Subscriptions';
 import ReportsPage from './pages/reports/Reports';
 import AdminsPage from './pages/admins/Admins';
@@ -38,7 +37,6 @@ export default function App() {
           <Route path="subjects" element={<SubjectsPage />} />
           <Route path="exams" element={<ExamsPage />} />
           <Route path="students" element={<StudentsPage />} />
-          <Route path="students/:id/exams" element={<StudentExamsPage />} />
           <Route path="subscriptions" element={<SubscriptionsPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="admins" element={<AdminsPage />} />

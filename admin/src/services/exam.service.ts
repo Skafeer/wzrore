@@ -54,9 +54,3 @@ export async function updateQuestion(id: string, data: Partial<Question>): Promi
 export async function deleteQuestion(id: string): Promise<void> {
   await api.delete(`/exams/admin/questions/${id}`);
 }
-
-// ✅ الدالة الجديدة لجلب امتحانات الطالب
-export async function getStudentExamSessions(userId: string): Promise<any[]> {
-  const res = await api.get(`/sessions/admin/user/${userId}`);
-  return res.data.data;
-}
