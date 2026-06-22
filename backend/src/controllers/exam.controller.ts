@@ -3,8 +3,6 @@ import { prisma } from '../utils/prisma';
 import { AuthRequest } from '../types';
 import logger from '../utils/logger';
 
-// ═══ STUDENT ═══
-
 export async function getExams(req: AuthRequest, res: Response): Promise<void> {
   try {
     const { subjectId, type, chapterId, topicId, year, round } = req.query as Record<string, string>;
@@ -26,20 +24,17 @@ export async function getExams(req: AuthRequest, res: Response): Promise<void> {
       if (round) where.round = parseInt(round);
     }
 
-    // فلترة السنوات المتوفرة فقط
     const userId = req.user!.id;
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { subscription: true },
     });
 
-    // التحقق من الاشتراك
     const isLaunchPeriod = await checkLaunchPeriod();
     const hasPaidSub = user?.subscription?.status === 'ACTIVE' &&
       new Date(user.subscription.endDate) > new Date();
 
     if (!isLaunchPeriod && !hasPaidSub && type === 'WIZARI') {
-      // المجاني: آخر سنتين فقط
       const currentYear = new Date().getFullYear();
       where.year = { gte: currentYear - 2 };
     }
@@ -48,18 +43,15 @@ export async function getExams(req: AuthRequest, res: Response): Promise<void> {
       where,
       orderBy: [{ year: 'desc' }, { round: 'asc' }],
       select: {
-        id: true,
-        title: true,
-        type: true,
-        year: true,
-        round: true,
-        duration: true,
+        id: true, title: true, type: true, year: true,
+        round: true, duration: true,
         _count: { select: { questions: true } },
       },
     });
 
     res.json({ success: true, data: exams });
-  } catch {
+  } catch (err) {
+    logger.error(`getExams — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
@@ -91,7 +83,8 @@ export async function getAvailableYears(req: AuthRequest, res: Response): Promis
     }
 
     res.json({ success: true, data: availableYears });
-  } catch {
+  } catch (err) {
+    logger.error(`getAvailableYears — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
@@ -109,12 +102,11 @@ export async function getAvailableRounds(req: AuthRequest, res: Response): Promi
     });
 
     res.json({ success: true, data: rounds.map(r => r.round).filter(Boolean) });
-  } catch {
+  } catch (err) {
+    logger.error(`getAvailableRounds — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
-
-// ═══ ADMIN ═══
 
 export async function adminGetExams(req: Request, res: Response): Promise<void> {
   try {
@@ -135,7 +127,8 @@ export async function adminGetExams(req: Request, res: Response): Promise<void> 
     });
 
     res.json({ success: true, data: exams });
-  } catch {
+  } catch (err) {
+    logger.error(`adminGetExams — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
@@ -161,9 +154,7 @@ export async function adminCreateExam(req: Request, res: Response): Promise<void
 
     const exam = await prisma.exam.create({
       data: {
-        title,
-        subjectId,
-        type,
+        title, subjectId, type,
         chapterId: type === 'CHAPTER' ? chapterId : null,
         topicId: type === 'CHAPTER' ? topicId ?? null : null,
         year: type === 'WIZARI' ? parseInt(year) : null,
@@ -173,7 +164,8 @@ export async function adminCreateExam(req: Request, res: Response): Promise<void
     });
 
     res.status(201).json({ success: true, data: exam });
-  } catch {
+  } catch (err) {
+    logger.error(`adminCreateExam — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
@@ -189,7 +181,8 @@ export async function adminUpdateExam(req: Request, res: Response): Promise<void
     });
 
     res.json({ success: true, data: exam });
-  } catch {
+  } catch (err) {
+    logger.error(`adminUpdateExam — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
@@ -199,12 +192,11 @@ export async function adminDeleteExam(req: Request, res: Response): Promise<void
     const { id } = req.params as { id: string };
     await prisma.exam.delete({ where: { id } });
     res.json({ success: true, message: 'تم حذف الامتحان' });
-  } catch {
+  } catch (err) {
+    logger.error(`adminDeleteExam — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
-
-// ═══ QUESTIONS ═══
 
 export async function adminGetQuestions(req: Request, res: Response): Promise<void> {
   try {
@@ -214,7 +206,8 @@ export async function adminGetQuestions(req: Request, res: Response): Promise<vo
       orderBy: { order: 'asc' },
     });
     res.json({ success: true, data: questions });
-  } catch {
+  } catch (err) {
+    logger.error(`adminGetQuestions — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
@@ -231,9 +224,7 @@ export async function adminCreateQuestion(req: Request, res: Response): Promise<
 
     const question = await prisma.question.create({
       data: {
-        examId,
-        text,
-        modelAnswer,
+        examId, text, modelAnswer,
         modelImages: modelImages ?? [],
         degree: parseFloat(degree),
         aiNotes: aiNotes ?? null,
@@ -242,7 +233,8 @@ export async function adminCreateQuestion(req: Request, res: Response): Promise<
     });
 
     res.status(201).json({ success: true, data: question });
-  } catch {
+  } catch (err) {
+    logger.error(`adminCreateQuestion — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
@@ -258,7 +250,8 @@ export async function adminUpdateQuestion(req: Request, res: Response): Promise<
     });
 
     res.json({ success: true, data: question });
-  } catch {
+  } catch (err) {
+    logger.error(`adminUpdateQuestion — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
@@ -268,12 +261,11 @@ export async function adminDeleteQuestion(req: Request, res: Response): Promise<
     const { id } = req.params as { id: string };
     await prisma.question.delete({ where: { id } });
     res.json({ success: true, message: 'تم حذف السؤال' });
-  } catch {
+  } catch (err) {
+    logger.error(`adminDeleteQuestion — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
-
-// ═══ HELPER ═══
 
 async function checkLaunchPeriod(): Promise<boolean> {
   const now = new Date();
