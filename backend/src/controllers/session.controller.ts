@@ -5,7 +5,6 @@ import { uploadImage } from '../utils/cloudinary';
 import { AuthRequest } from '../types';
 import logger from '../utils/logger';
 
-// بدء امتحان جديد
 export async function startExam(req: AuthRequest, res: Response): Promise<void> {
   try {
     const { examId } = req.body;
@@ -21,13 +20,7 @@ export async function startExam(req: AuthRequest, res: Response): Promise<void> 
       include: {
         questions: {
           orderBy: { order: 'asc' },
-          select: {
-            id: true,
-            text: true,
-            degree: true,
-            order: true,
-            modelImages: true,
-          },
+          select: { id: true, text: true, degree: true, order: true, modelImages: true },
         },
       },
     });
@@ -49,28 +42,19 @@ export async function startExam(req: AuthRequest, res: Response): Promise<void> 
     if (!isLaunchPeriod && !hasPaidSub) {
       const now = new Date();
       const registrationDate = new Date(user!.createdAt);
-
-      // حساب بداية الدورة الحالية من تاريخ التسجيل
       const dayOfRegistration = registrationDate.getDate();
       let cycleStart = new Date(now.getFullYear(), now.getMonth(), dayOfRegistration);
 
-      // إذا لم يحن يوم التجديد بعد هذا الشهر، نرجع للشهر الماضي
       if (cycleStart > now) {
         cycleStart = new Date(now.getFullYear(), now.getMonth() - 1, dayOfRegistration);
       }
 
-      // العد من بداية الجلسة (مو التسليم) — يمنع الاستغلال
       const examCount = await prisma.examSession.count({
-        where: {
-          userId,
-          createdAt: { gte: cycleStart },
-        },
+        where: { userId, createdAt: { gte: cycleStart } },
       });
 
       if (examCount >= 5) {
-        // حساب تاريخ التجديد القادم
         const nextRenewal = new Date(now.getFullYear(), now.getMonth() + (cycleStart <= now ? 1 : 0), dayOfRegistration);
-
         res.status(403).json({
           success: false,
           message: `وصلت للحد الأقصى للامتحانات المجانية (5 امتحانات). يتجدد العداد يوم ${nextRenewal.toLocaleDateString('ar-IQ')}`,
@@ -83,9 +67,7 @@ export async function startExam(req: AuthRequest, res: Response): Promise<void> 
 
     const session = await prisma.examSession.create({
       data: {
-        userId,
-        examId,
-        totalScore: 0,
+        userId, examId, totalScore: 0,
         maxScore: exam.questions.reduce((sum, q) => sum + q.degree, 0),
       },
     });
@@ -96,29 +78,22 @@ export async function startExam(req: AuthRequest, res: Response): Promise<void> 
       success: true,
       data: {
         sessionId: session.id,
-        exam: {
-          id: exam.id,
-          title: exam.title,
-          duration: exam.duration,
-          questions: exam.questions,
-        },
+        exam: { id: exam.id, title: exam.title, duration: exam.duration, questions: exam.questions },
       },
     });
-  } catch {
+  } catch (err) {
+    logger.error(`startExam — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
 
-// حفظ إجابة سؤال
 export async function saveAnswer(req: AuthRequest, res: Response): Promise<void> {
   try {
     const { sessionId } = req.params as { sessionId: string };
     const { questionId, answerText } = req.body;
     const userId = req.user!.id;
 
-    const session = await prisma.examSession.findUnique({
-      where: { id: sessionId },
-    });
+    const session = await prisma.examSession.findUnique({ where: { id: sessionId } });
 
     if (!session || session.userId !== userId) {
       res.status(403).json({ success: false, message: 'غير مصرح' });
@@ -135,7 +110,6 @@ export async function saveAnswer(req: AuthRequest, res: Response): Promise<void>
       const hasPaidSub = req.user!.plan !== null;
       const maxImages = hasPaidSub ? 3 : 1;
       const filesToUpload = req.files.slice(0, maxImages);
-
       for (const file of filesToUpload) {
         const url = await uploadImage(file.buffer, 'answers');
         answerImages.push(url);
@@ -143,20 +117,18 @@ export async function saveAnswer(req: AuthRequest, res: Response): Promise<void>
     }
 
     const answer = await prisma.studentAnswer.upsert({
-      where: {
-        sessionId_questionId: { sessionId, questionId },
-      },
+      where: { sessionId_questionId: { sessionId, questionId } },
       update: { answerText, answerImages },
       create: { sessionId, questionId, answerText, answerImages },
     });
 
     res.json({ success: true, data: answer });
-  } catch {
+  } catch (err) {
+    logger.error(`saveAnswer — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
 
-// تسليم الامتحان وتصحيح بالذكاء الاصطناعي
 export async function submitExam(req: AuthRequest, res: Response): Promise<void> {
   try {
     const { sessionId } = req.params as { sessionId: string };
@@ -165,11 +137,7 @@ export async function submitExam(req: AuthRequest, res: Response): Promise<void>
     const session = await prisma.examSession.findUnique({
       where: { id: sessionId },
       include: {
-        exam: {
-          include: {
-            questions: { orderBy: { order: 'asc' } },
-          },
-        },
+        exam: { include: { questions: { orderBy: { order: 'asc' } } } },
         studentAnswers: true,
       },
     });
@@ -188,9 +156,7 @@ export async function submitExam(req: AuthRequest, res: Response): Promise<void>
     const gradingResults = [];
 
     for (const question of session.exam.questions) {
-      const studentAnswer = session.studentAnswers.find(
-        a => a.questionId === question.id
-      );
+      const studentAnswer = session.studentAnswers.find(a => a.questionId === question.id);
 
       const result = await gradeAnswer({
         questionText: question.text,
@@ -205,60 +171,42 @@ export async function submitExam(req: AuthRequest, res: Response): Promise<void>
       totalScore += result.score;
 
       await prisma.studentAnswer.upsert({
-        where: {
-          sessionId_questionId: { sessionId, questionId: question.id },
-        },
+        where: { sessionId_questionId: { sessionId, questionId: question.id } },
         update: { aiScore: result.score, aiFeedback: result.feedback },
         create: {
-          sessionId,
-          questionId: question.id,
+          sessionId, questionId: question.id,
           answerText: studentAnswer?.answerText ?? '',
           answerImages: studentAnswer?.answerImages ?? [],
-          aiScore: result.score,
-          aiFeedback: result.feedback,
+          aiScore: result.score, aiFeedback: result.feedback,
         },
       });
 
-      gradingResults.push({
-        questionId: question.id,
-        score: result.score,
-        feedback: result.feedback,
-      });
+      gradingResults.push({ questionId: question.id, score: result.score, feedback: result.feedback });
     }
 
     const updatedSession = await prisma.examSession.update({
       where: { id: sessionId },
-      data: {
-        isCompleted: true,
-        submittedAt: new Date(),
-        totalScore,
-      },
+      data: { isCompleted: true, submittedAt: new Date(), totalScore },
     });
 
-    // تحديث سلسلة الدراسة بعد إكمال الامتحان
     const streakResult = await updateStudyStreak(userId);
 
     res.json({
       success: true,
       data: {
-        sessionId,
-        totalScore,
-        maxScore: updatedSession.maxScore,
-        gradingResults,
+        sessionId, totalScore, maxScore: updatedSession.maxScore, gradingResults,
         streak: {
-          current: streakResult.newStreak,
-          best: streakResult.bestStreak,
-          isNewBest: streakResult.isNewBest,
-          alreadyCompletedToday: streakResult.alreadyCompletedToday,
+          current: streakResult.newStreak, best: streakResult.bestStreak,
+          isNewBest: streakResult.isNewBest, alreadyCompletedToday: streakResult.alreadyCompletedToday,
         },
       },
     });
-  } catch {
+  } catch (err) {
+    logger.error(`submitExam — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
 
-// صفحة النتيجة الكاملة
 export async function getResult(req: AuthRequest, res: Response): Promise<void> {
   try {
     const { sessionId } = req.params as { sessionId: string };
@@ -292,36 +240,27 @@ export async function getResult(req: AuthRequest, res: Response): Promise<void> 
     const questionsDetail = session.exam.questions.map(q => {
       const answer = session.studentAnswers.find(a => a.questionId === q.id);
       return {
-        questionId: q.id,
-        questionText: q.text,
-        modelAnswer: q.modelAnswer,
-        modelImages: q.modelImages,
-        degree: q.degree,
-        studentAnswer: answer?.answerText ?? '',
-        studentImages: answer?.answerImages ?? [],
-        aiScore: answer?.aiScore ?? 0,
-        aiFeedback: answer?.aiFeedback ?? '',
+        questionId: q.id, questionText: q.text,
+        modelAnswer: q.modelAnswer, modelImages: q.modelImages, degree: q.degree,
+        studentAnswer: answer?.answerText ?? '', studentImages: answer?.answerImages ?? [],
+        aiScore: answer?.aiScore ?? 0, aiFeedback: answer?.aiFeedback ?? '',
       };
     });
 
     res.json({
       success: true,
       data: {
-        sessionId,
-        examTitle: session.exam.title,
-        subject: session.exam.subject.name,
-        totalScore: session.totalScore,
-        maxScore: session.maxScore,
-        submittedAt: session.submittedAt,
-        questions: questionsDetail,
+        sessionId, examTitle: session.exam.title, subject: session.exam.subject.name,
+        totalScore: session.totalScore, maxScore: session.maxScore,
+        submittedAt: session.submittedAt, questions: questionsDetail,
       },
     });
-  } catch {
+  } catch (err) {
+    logger.error(`getResult — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
 
-// آخر امتحان للصفحة الرئيسية
 export async function getLastExam(req: AuthRequest, res: Response): Promise<void> {
   try {
     const userId = req.user!.id;
@@ -347,21 +286,17 @@ export async function getLastExam(req: AuthRequest, res: Response): Promise<void
     res.json({
       success: true,
       data: {
-        sessionId: session.id,
-        subject: session.exam.subject.name,
-        chapter: session.exam.chapter?.name ?? null,
-        examTitle: session.exam.title,
-        totalScore: session.totalScore,
-        maxScore: session.maxScore,
-        submittedAt: session.submittedAt,
+        sessionId: session.id, subject: session.exam.subject.name,
+        chapter: session.exam.chapter?.name ?? null, examTitle: session.exam.title,
+        totalScore: session.totalScore, maxScore: session.maxScore, submittedAt: session.submittedAt,
       },
     });
-  } catch {
+  } catch (err) {
+    logger.error(`getLastExam — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
 
-// ملخص الأداء للصفحة الرئيسية
 export async function getPerformanceSummary(req: AuthRequest, res: Response): Promise<void> {
   try {
     const userId = req.user!.id;
@@ -374,104 +309,20 @@ export async function getPerformanceSummary(req: AuthRequest, res: Response): Pr
     const totalExams = sessions.length;
     const avgScore = totalExams > 0
       ? sessions.reduce((sum, s) => {
-          const pct = s.maxScore && s.maxScore > 0
-            ? (s.totalScore ?? 0) / s.maxScore * 100
-            : 0;
+          const pct = s.maxScore && s.maxScore > 0 ? (s.totalScore ?? 0) / s.maxScore * 100 : 0;
           return sum + pct;
         }, 0) / totalExams
       : 0;
 
     res.json({
       success: true,
-      data: {
-        totalExams,
-        avgScore: Math.round(avgScore * 10) / 10,
-      },
+      data: { totalExams, avgScore: Math.round(avgScore * 10) / 10 },
     });
-  } catch {
+  } catch (err) {
+    logger.error(`getPerformanceSummary — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
-
-// ═══ HELPER ═══
-
-async function checkLaunchPeriod(): Promise<boolean> {
-  const now = new Date();
-  const launch = await prisma.launchPeriod.findFirst({
-    where: { isActive: true, startDate: { lte: now }, endDate: { gte: now } },
-  });
-  return !!launch;
-}
-
-async function updateStudyStreak(userId: string): Promise<{ 
-  newStreak: number; 
-  bestStreak: number; 
-  isNewBest: boolean;
-  alreadyCompletedToday: boolean;
-}> {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) return { newStreak: 0, bestStreak: 0, isNewBest: false, alreadyCompletedToday: false };
-
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const lastStudy = user.lastStudyDate
-    ? new Date(user.lastStudyDate.getFullYear(), user.lastStudyDate.getMonth(), user.lastStudyDate.getDate())
-    : null;
-
-  // إذا أكمل امتحان اليوم مسبقاً — لا تزيد
-  if (lastStudy && lastStudy.getTime() === today.getTime()) {
-    return { 
-      newStreak: user.studyStreak, 
-      bestStreak: user.bestStreak, 
-      isNewBest: false,
-      alreadyCompletedToday: true,
-    };
-  }
-
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  let newStreak = 1; // ✅ القيمة الافتراضية = 1 (أول امتحان أو بعد انتهاء السلسلة)
-
-  if (lastStudy) {
-    const diffDays = Math.floor((today.getTime() - lastStudy.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 1) {
-      // أكمل بالأمس — زد السلسلة
-      newStreak = user.studyStreak + 1;
-    } else if (diffDays === 2 && user.streakFreeze > 0) {
-      // فاته يوم — استخدم Freeze
-      newStreak = user.studyStreak + 1;
-      await prisma.user.update({
-        where: { id: userId },
-        data: { streakFreeze: user.streakFreeze - 1 },
-      });
-    } else if (diffDays > 1) {
-      // فاته أكثر من يوم — تصفير (تبقى 1 لأن اليوم الجديد يعتبر بداية جديدة)
-      newStreak = 1;
-    }
-    // diffDays === 0 تم التعامل معها أعلاه (alreadyCompletedToday)
-  }
-  // else: lastStudy === null (أول امتحان) → newStreak = 1 ✅
-
-  const newBestStreak = Math.max(newStreak, user.bestStreak);
-  const isNewBest = newStreak > user.bestStreak;
-
-  await prisma.user.update({
-    where: { id: userId },
-    data: { 
-      studyStreak: newStreak, 
-      bestStreak: newBestStreak,
-      lastStudyDate: now,
-    },
-  });
-
-  return { newStreak, bestStreak: newBestStreak, isNewBest, alreadyCompletedToday: false };
-}
-
-
-
-
 
 export async function adminGetUserSessions(req: any, res: Response): Promise<void> {
   try {
@@ -500,17 +351,65 @@ export async function adminGetUserSessions(req: any, res: Response): Promise<voi
       data: {
         user,
         sessions: sessions.map(s => ({
-          sessionId: s.id,
-          examTitle: s.exam.title,
-          subject: s.exam.subject.name,
-          chapter: s.exam.chapter?.name ?? null,
-          totalScore: s.totalScore,
-          maxScore: s.maxScore,
-          submittedAt: s.submittedAt,
+          sessionId: s.id, examTitle: s.exam.title,
+          subject: s.exam.subject.name, chapter: s.exam.chapter?.name ?? null,
+          totalScore: s.totalScore, maxScore: s.maxScore, submittedAt: s.submittedAt,
         })),
       },
     });
-  } catch {
+  } catch (err) {
+    logger.error(`adminGetUserSessions — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
+}
+
+// ═══ HELPER ═══
+
+async function checkLaunchPeriod(): Promise<boolean> {
+  const now = new Date();
+  const launch = await prisma.launchPeriod.findFirst({
+    where: { isActive: true, startDate: { lte: now }, endDate: { gte: now } },
+  });
+  return !!launch;
+}
+
+async function updateStudyStreak(userId: string): Promise<{
+  newStreak: number; bestStreak: number; isNewBest: boolean; alreadyCompletedToday: boolean;
+}> {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return { newStreak: 0, bestStreak: 0, isNewBest: false, alreadyCompletedToday: false };
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const lastStudy = user.lastStudyDate
+    ? new Date(user.lastStudyDate.getFullYear(), user.lastStudyDate.getMonth(), user.lastStudyDate.getDate())
+    : null;
+
+  if (lastStudy && lastStudy.getTime() === today.getTime()) {
+    return { newStreak: user.studyStreak, bestStreak: user.bestStreak, isNewBest: false, alreadyCompletedToday: true };
+  }
+
+  let newStreak = 1;
+
+  if (lastStudy) {
+    const diffDays = Math.floor((today.getTime() - lastStudy.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays === 1) {
+      newStreak = user.studyStreak + 1;
+    } else if (diffDays === 2 && user.streakFreeze > 0) {
+      newStreak = user.studyStreak + 1;
+      await prisma.user.update({ where: { id: userId }, data: { streakFreeze: user.streakFreeze - 1 } });
+    } else if (diffDays > 1) {
+      newStreak = 1;
+    }
+  }
+
+  const newBestStreak = Math.max(newStreak, user.bestStreak);
+  const isNewBest = newStreak > user.bestStreak;
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { studyStreak: newStreak, bestStreak: newBestStreak, lastStudyDate: now },
+  });
+
+  return { newStreak, bestStreak: newBestStreak, isNewBest, alreadyCompletedToday: false };
 }
