@@ -13,7 +13,6 @@ import userRoutes from './routes/user.routes';
 import notificationRoutes from './routes/notification.routes';
 import { errorHandler, notFound } from './middleware/error';
 
-// فقط في development
 if (process.env.NODE_ENV !== 'production') {
   dotenv.config();
 }
@@ -21,7 +20,6 @@ if (process.env.NODE_ENV !== 'production') {
 const app = express();
 const PORT = process.env.PORT ?? 3000;
 
-// ═══ Trust Proxy (Railway) ═══
 app.set('trust proxy', 1);
 
 // ═══ Security ═══
@@ -37,10 +35,29 @@ app.use(cors({
 app.options('/{*path}', cors());
 
 // ═══ Rate Limiting ═══
+// عام — 1000 طلب كل 15 دقيقة (يتحمل 50 طالب × 20 طلب)
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { success: false, message: 'طلبات كثيرة، حاول لاحقاً' },
+}));
+
+// المصادقة — أشد حماية
+app.use('/api/auth', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'محاولات كثيرة، حاول بعد 15 دقيقة' },
+}));
+
+// الإشعارات — حماية متوسطة
+app.use('/api/notifications/admin', rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: { success: false, message: 'حاول لاحقاً' },
 }));
 
 // ═══ Body Parser ═══

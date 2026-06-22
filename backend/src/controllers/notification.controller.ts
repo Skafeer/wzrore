@@ -2,8 +2,8 @@ import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
 import { sendNotification, sendNotificationToAll } from '../utils/push';
 import { AuthRequest } from '../types';
+import logger from '../utils/logger';
 
-// حفظ FCM Token
 export async function saveFcmToken(req: AuthRequest, res: Response): Promise<void> {
   try {
     const userId = req.user!.id;
@@ -15,16 +15,15 @@ export async function saveFcmToken(req: AuthRequest, res: Response): Promise<voi
     });
 
     res.json({ success: true, message: token ? 'تم حفظ التوكن' : 'تم إلغاء الإشعارات' });
-  } catch {
+  } catch (err) {
+    logger.error(`saveFcmToken — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
 
-// إرسال إشعار لطالب محدد
 export async function adminSendToUser(req: Request, res: Response): Promise<void> {
   try {
     const { userId, title, body } = req.body;
-
     const user = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!user?.fcmToken) {
@@ -33,14 +32,13 @@ export async function adminSendToUser(req: Request, res: Response): Promise<void
     }
 
     const success = await sendNotification(user.fcmToken, title, body);
-
     res.json({ success, message: success ? 'تم إرسال الإشعار' : 'فشل إرسال الإشعار' });
-  } catch {
+  } catch (err) {
+    logger.error(`adminSendToUser — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
 
-// إرسال إشعار لجميع الطلاب
 export async function adminSendToAll(req: Request, res: Response): Promise<void> {
   try {
     const { title, body } = req.body;
@@ -59,12 +57,7 @@ export async function adminSendToAll(req: Request, res: Response): Promise<void>
     const successCount = await sendNotificationToAll(tokens, title, body);
 
     await prisma.notification.create({
-      data: {
-        title,
-        body,
-        sentBy: 'admin',
-        totalSent: successCount,
-      },
+      data: { title, body, sentBy: 'admin', totalSent: successCount },
     });
 
     res.json({
@@ -72,21 +65,21 @@ export async function adminSendToAll(req: Request, res: Response): Promise<void>
       message: `تم إرسال الإشعار لـ ${successCount} طالب`,
       data: { totalSent: successCount, totalTokens: tokens.length },
     });
-  } catch {
+  } catch (err) {
+    logger.error(`adminSendToAll — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
 
-// جلب سجل الإشعارات
 export async function adminGetNotifications(req: Request, res: Response): Promise<void> {
   try {
     const notifications = await prisma.notification.findMany({
       orderBy: { sentAt: 'desc' },
       take: 50,
     });
-
     res.json({ success: true, data: notifications });
-  } catch {
+  } catch (err) {
+    logger.error(`adminGetNotifications — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }

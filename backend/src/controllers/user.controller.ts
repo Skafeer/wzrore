@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../utils/prisma';
 import { uploadImage } from '../utils/cloudinary';
 import { AuthRequest } from '../types';
+import logger from '../utils/logger';
 
 // ═══ STUDENT ═══
 

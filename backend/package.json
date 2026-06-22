@@ -41,6 +41,7 @@
     "prisma": "^5.22.0",
     "typescript": "^6.0.3",
     "uuid": "^14.0.0",
+    "winston": "^3.19.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

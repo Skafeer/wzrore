@@ -1,7 +1,7 @@
-import { Response } from 'express';
-import { Request } from 'express';
+import { Response, Request } from 'express';
 import { prisma } from '../utils/prisma';
 import { AuthRequest } from '../types';
+import logger from '../utils/logger';
 
 export async function createReport(req: AuthRequest, res: Response): Promise<void> {
   try {
@@ -18,7 +18,8 @@ export async function createReport(req: AuthRequest, res: Response): Promise<voi
     });
 
     res.status(201).json({ success: true, data: report });
-  } catch {
+  } catch (err) {
+    logger.error(`createReport — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
@@ -39,7 +40,8 @@ export async function adminGetReports(req: Request, res: Response): Promise<void
     });
 
     res.json({ success: true, data: reports });
-  } catch {
+  } catch (err) {
+    logger.error(`adminGetReports — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
@@ -49,22 +51,21 @@ export async function adminUpdateReport(req: Request, res: Response): Promise<vo
     const { id } = req.params as { id: string };
     const { status } = req.body;
 
-    const report = await prisma.report.update({
-      where: { id },
-      data: { status },
-    });
-
+    const report = await prisma.report.update({ where: { id }, data: { status } });
     res.json({ success: true, data: report });
-  } catch {
+  } catch (err) {
+    logger.error(`adminUpdateReport — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
+
 export async function adminDeleteReport(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params as { id: string };
     await prisma.report.delete({ where: { id } });
     res.json({ success: true, message: 'تم حذف البلاغ' });
-  } catch {
+  } catch (err) {
+    logger.error(`adminDeleteReport — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }

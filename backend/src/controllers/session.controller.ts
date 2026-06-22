@@ -3,6 +3,7 @@ import { prisma } from '../utils/prisma';
 import { gradeAnswer } from '../utils/gemini';
 import { uploadImage } from '../utils/cloudinary';
 import { AuthRequest } from '../types';
+import logger from '../utils/logger';
 
 // بدء امتحان جديد
 export async function startExam(req: AuthRequest, res: Response): Promise<void> {

@@ -2,23 +2,20 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../utils/prisma';
 import { AdminRequest } from '../types';
+import logger from '../utils/logger';
 
 export async function adminGetAdmins(req: AdminRequest, res: Response): Promise<void> {
   try {
     const admins = await prisma.admin.findMany({
       orderBy: { createdAt: 'desc' },
       select: {
-        id: true,
-        name: true,
-        username: true,
-        email: true,
-        adminRole: true,
-        permissions: true,
-        createdAt: true,
+        id: true, name: true, username: true, email: true,
+        adminRole: true, permissions: true, createdAt: true,
       },
     });
     res.json({ success: true, data: admins });
-  } catch {
+  } catch (err) {
+    logger.error(`adminGetAdmins — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
@@ -42,30 +39,19 @@ export async function adminCreateAdmin(req: AdminRequest, res: Response): Promis
     }
 
     const hashed = await bcrypt.hash(password, 12);
-
     const admin = await prisma.admin.create({
-      data: {
-        name,
-        username,
-        email,
-        password: hashed,
-        adminRole: 'ADMIN',
-        permissions: permissions ?? {},
-      },
+      data: { name, username, email, password: hashed, adminRole: 'ADMIN', permissions: permissions ?? {} },
     });
 
     res.status(201).json({
       success: true,
       data: {
-        id: admin.id,
-        name: admin.name,
-        username: admin.username,
-        email: admin.email,
-        adminRole: admin.adminRole,
-        permissions: admin.permissions,
+        id: admin.id, name: admin.name, username: admin.username,
+        email: admin.email, adminRole: admin.adminRole, permissions: admin.permissions,
       },
     });
-  } catch {
+  } catch (err) {
+    logger.error(`adminCreateAdmin — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
@@ -77,14 +63,12 @@ export async function adminUpdateAdmin(req: AdminRequest, res: Response): Promis
 
     const admin = await prisma.admin.update({
       where: { id },
-      data: {
-        ...(name && { name }),
-        ...(permissions && { permissions }),
-      },
+      data: { ...(name && { name }), ...(permissions && { permissions }) },
     });
 
     res.json({ success: true, data: admin });
-  } catch {
+  } catch (err) {
+    logger.error(`adminUpdateAdmin — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
@@ -100,7 +84,8 @@ export async function adminDeleteAdmin(req: AdminRequest, res: Response): Promis
 
     await prisma.admin.delete({ where: { id } });
     res.json({ success: true, message: 'تم حذف الأدمن' });
-  } catch {
+  } catch (err) {
+    logger.error(`adminDeleteAdmin — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }

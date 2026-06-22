@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../utils/prisma';
+import logger from '../utils/logger';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -21,46 +22,38 @@ export async function register(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // التحقق من رقم الهاتف
     if (!/^07\d{9}$/.test(phone)) {
       res.status(400).json({ success: false, message: 'رقم الهاتف يجب أن يبدأ بـ 07 ويكون 11 رقم' });
       return;
     }
 
-    // التحقق من المحافظة
     if (!IRAQ_PROVINCES.includes(province)) {
       res.status(400).json({ success: false, message: 'المحافظة غير صحيحة' });
       return;
     }
 
-    // التحقق من كلمة المرور
     if (password.length < 8) {
       res.status(400).json({ success: false, message: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' });
       return;
     }
+
     if (!/(?=.*[a-zA-Z])(?=.*[0-9])/.test(password)) {
       res.status(400).json({ success: false, message: 'كلمة المرور يجب أن تحتوي على حروف وأرقام' });
       return;
     }
 
-    const existing = await prisma.user.findFirst({
-      where: { phone },
-    });
-
+    const existing = await prisma.user.findFirst({ where: { phone } });
     if (existing) {
       res.status(400).json({ success: false, message: 'رقم الهاتف مسجل مسبقاً' });
       return;
     }
 
     const hashed = await bcrypt.hash(password, 12);
-
     const user = await prisma.user.create({
       data: { name, phone, province, password: hashed },
     });
 
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, {
-      expiresIn: '90d',
-    });
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '90d' });
 
     res.status(201).json({
       success: true,
@@ -68,16 +61,13 @@ export async function register(req: Request, res: Response): Promise<void> {
       data: {
         token,
         user: {
-          id: user.id,
-          name: user.name,
-          phone: user.phone,
-          province: user.province,
-          avatar: user.avatar,
-          studyStreak: user.studyStreak,
+          id: user.id, name: user.name, phone: user.phone,
+          province: user.province, avatar: user.avatar, studyStreak: user.studyStreak,
         },
       },
     });
-  } catch {
+  } catch (err) {
+    logger.error(`register — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
@@ -101,9 +91,7 @@ export async function login(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, {
-      expiresIn: '90d',
-    });
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '90d' });
 
     res.json({
       success: true,
@@ -111,17 +99,14 @@ export async function login(req: Request, res: Response): Promise<void> {
       data: {
         token,
         user: {
-          id: user.id,
-          name: user.name,
-          phone: user.phone,
-          province: user.province,
-          avatar: user.avatar,
-          studyStreak: user.studyStreak,
-          subscription: user.subscription,
+          id: user.id, name: user.name, phone: user.phone,
+          province: user.province, avatar: user.avatar,
+          studyStreak: user.studyStreak, subscription: user.subscription,
         },
       },
     });
-  } catch {
+  } catch (err) {
+    logger.error(`login — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
@@ -153,16 +138,13 @@ export async function adminLogin(req: Request, res: Response): Promise<void> {
       data: {
         token,
         admin: {
-          id: admin.id,
-          name: admin.name,
-          username: admin.username,
-          email: admin.email,
-          adminRole: admin.adminRole,
-          permissions: admin.permissions,
+          id: admin.id, name: admin.name, username: admin.username,
+          email: admin.email, adminRole: admin.adminRole, permissions: admin.permissions,
         },
       },
     });
-  } catch {
+  } catch (err) {
+    logger.error(`adminLogin — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }

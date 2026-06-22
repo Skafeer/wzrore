@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
 import { AuthRequest } from '../types';
+import logger from '../utils/logger';
 
 // ═══ STUDENT ═══
 

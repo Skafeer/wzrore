@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
+import logger from '../utils/logger';
 
 export async function adminGetStats(req: Request, res: Response): Promise<void> {
   try {
@@ -14,14 +15,8 @@ export async function adminGetStats(req: Request, res: Response): Promise<void> 
     }
 
     const [
-      totalUsers,
-      totalExams,
-      totalSessions,
-      completedSessions,
-      activeSubscriptions,
-      totalReports,
-      pendingReports,
-      recentSessions,
+      totalUsers, totalExams, totalSessions, completedSessions,
+      activeSubscriptions, totalReports, pendingReports, recentSessions,
     ] = await Promise.all([
       prisma.user.count({ where: dateFilter }),
       prisma.exam.count(),
@@ -44,17 +39,12 @@ export async function adminGetStats(req: Request, res: Response): Promise<void> 
     res.json({
       success: true,
       data: {
-        totalUsers,
-        totalExams,
-        totalSessions,
-        completedSessions,
-        activeSubscriptions,
-        totalReports,
-        pendingReports,
-        recentSessions,
+        totalUsers, totalExams, totalSessions, completedSessions,
+        activeSubscriptions, totalReports, pendingReports, recentSessions,
       },
     });
-  } catch {
+  } catch (err) {
+    logger.error(`adminGetStats — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
