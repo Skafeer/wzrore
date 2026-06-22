@@ -10,7 +10,7 @@ export interface User {
   bestStreak: number;
   streakFreeze: number;
   lastStudyDate?: string;
-  fcmToken?: string | null; // ✅ إضافة هذا السطر
+  fcmToken?: string | null;
   subscription?: Subscription | null;
 }
 
@@ -111,7 +111,7 @@ export interface LastExam {
   submittedAt: string;
 }
 
-// إضافة واجهة لنتيجة الـ Streak عند تسليم الامتحان
+
 export interface SubmitExamResponse {
   sessionId: string;
   totalScore: number;
