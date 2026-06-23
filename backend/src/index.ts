@@ -12,6 +12,7 @@ import subscriptionRoutes from './routes/subscription.routes';
 import userRoutes from './routes/user.routes';
 import notificationRoutes from './routes/notification.routes';
 import { errorHandler, notFound } from './middleware/error';
+import { checkAndResetStreaks } from './utils/streakCron';
 
 if (process.env.NODE_ENV !== 'production') {
   dotenv.config();
@@ -68,6 +69,26 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/health', (req, res) => {
   res.json({ success: true, message: 'Sawab API is running 🚀' });
 });
+
+
+
+// ═══ Streak Cron — كل منتصف ليل ═══
+function scheduleMidnightCron() {
+  const now = new Date();
+  const night = new Date(now);
+  night.setHours(24, 0, 30, 0); // منتصف الليل + 30 ثانية
+
+  const msUntilMidnight = night.getTime() - now.getTime();
+
+  setTimeout(() => {
+    checkAndResetStreaks();
+    // بعدين كل 24 ساعة
+    setInterval(checkAndResetStreaks, 24 * 60 * 60 * 1000);
+  }, msUntilMidnight);
+}
+
+scheduleMidnightCron();
+
 
 // ═══ Routes ═══
 app.use('/api/auth', authRoutes);
