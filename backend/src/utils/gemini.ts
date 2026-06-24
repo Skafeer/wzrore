@@ -82,7 +82,7 @@ ${aiNotes ? `ملاحظات للمصحح: ${aiNotes}` : ''}
     for (let attempt = 0; attempt < keys.length; attempt++) {
       try {
         const model = getClient().getGenerativeModel({
-          model: 'models/gemini-1.5-flash',
+          model: 'gemini-2.5-flash-lite',
         });
 
         const parts: any[] = [{ text: prompt }];

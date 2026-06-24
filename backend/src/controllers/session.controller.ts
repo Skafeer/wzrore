@@ -158,15 +158,22 @@ export async function submitExam(req: AuthRequest, res: Response): Promise<void>
     for (const question of session.exam.questions) {
       const studentAnswer = session.studentAnswers.find(a => a.questionId === question.id);
 
-      const result = await gradeAnswer({
-        questionText: question.text,
-        modelAnswer: question.modelAnswer,
-        studentAnswer: studentAnswer?.answerText ?? '',
-        degree: question.degree,
-        aiNotes: question.aiNotes,
-        modelImages: question.modelImages,
-        studentImages: studentAnswer?.answerImages ?? [],
-      });
+      // 🔧 التعديل: حاول التصحيح، وإذا فشل استخدم قيماً افتراضية
+      let result = { score: 0, feedback: 'تعذر التصحيح التلقائي' };
+      try {
+        result = await gradeAnswer({
+          questionText: question.text,
+          modelAnswer: question.modelAnswer,
+          studentAnswer: studentAnswer?.answerText ?? '',
+          degree: question.degree,
+          aiNotes: question.aiNotes,
+          modelImages: question.modelImages,
+          studentImages: studentAnswer?.answerImages ?? [],
+        });
+      } catch (err) {
+        logger.error(`gradeAnswer failed for question ${question.id}: ${(err as Error).message}`);
+        // نستمر بالحلقة مع result الافتراضي
+      }
 
       totalScore += result.score;
 
