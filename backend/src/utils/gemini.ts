@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import logger from './logger';
 
 const keys = [
   process.env.GEMINI_KEY_1!,
@@ -8,8 +9,7 @@ const keys = [
   process.env.GEMINI_KEY_5!,
   process.env.GEMINI_KEY_6!,
   process.env.GEMINI_KEY_7!,
-
-];
+].filter(Boolean);
 
 let currentKeyIndex = 0;
 
@@ -19,6 +19,10 @@ function getClient(): GoogleGenerativeAI {
 
 function rotateKey(): void {
   currentKeyIndex = (currentKeyIndex + 1) % keys.length;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function urlToBase64(url: string): Promise<{ data: string; mimeType: string } | null> {
@@ -72,59 +76,65 @@ ${aiNotes ? `ملاحظات للمصحح: ${aiNotes}` : ''}
   "feedback": "<التحليل>"
 }`;
 
-  for (let attempt = 0; attempt < keys.length; attempt++) {
-    try {
-      const model = getClient().getGenerativeModel({
-        model: 'models/gemini-2.5-flash-lite',
-      });
+  // محاولة مع كل المفاتيح + retry
+  const maxRounds = 3; // 3 جولات على كل المفاتيح
+  for (let round = 0; round < maxRounds; round++) {
+    for (let attempt = 0; attempt < keys.length; attempt++) {
+      try {
+        const model = getClient().getGenerativeModel({
+          model: 'models/gemini-2.5-flash-lite',
+        });
 
-      const parts: any[] = [{ text: prompt }];
+        const parts: any[] = [{ text: prompt }];
 
-      // إضافة صور الطالب
-      if (hasStudentImages) {
-        for (const imgUrl of studentImages!) {
-          const imgData = await urlToBase64(imgUrl);
-          if (imgData) {
-            parts.push({
-              inlineData: {
-                mimeType: imgData.mimeType,
-                data: imgData.data,
-              },
-            });
+        if (hasStudentImages) {
+          for (const imgUrl of studentImages!) {
+            const imgData = await urlToBase64(imgUrl);
+            if (imgData) {
+              parts.push({ inlineData: { mimeType: imgData.mimeType, data: imgData.data } });
+            }
           }
         }
-      }
 
-      // إضافة صور الإجابة النموذجية إذا موجودة
-      if (modelImages && modelImages.length > 0) {
-        for (const imgUrl of modelImages) {
-          const imgData = await urlToBase64(imgUrl);
-          if (imgData) {
-            parts.push({
-              inlineData: {
-                mimeType: imgData.mimeType,
-                data: imgData.data,
-              },
-            });
+        if (modelImages && modelImages.length > 0) {
+          for (const imgUrl of modelImages) {
+            const imgData = await urlToBase64(imgUrl);
+            if (imgData) {
+              parts.push({ inlineData: { mimeType: imgData.mimeType, data: imgData.data } });
+            }
           }
         }
+
+        const result = await model.generateContent(parts);
+        const text = result.response.text().trim();
+        const clean = text.replace(/```json|```/g, '').trim();
+        const parsed = JSON.parse(clean);
+
+        return {
+          score: Math.min(Math.max(Number(parsed.score), 0), degree),
+          feedback: parsed.feedback,
+        };
+      } catch (err) {
+        const errMsg = (err as Error).message;
+        logger.warn(`Gemini key ${currentKeyIndex} failed (round ${round + 1}): ${errMsg}`);
+        rotateKey();
+
+        // تأخير بين المحاولات
+        if (attempt < keys.length - 1) await sleep(1000);
       }
+    }
 
-      const result = await model.generateContent(parts);
-      const text = result.response.text().trim();
-
-      const clean = text.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(clean);
-
-      return {
-        score: Math.min(Math.max(Number(parsed.score), 0), degree),
-        feedback: parsed.feedback,
-      };
-    } catch (err) {
-      rotateKey();
-      if (attempt === keys.length - 1) throw err;
+    // تأخير بين الجولات
+    if (round < maxRounds - 1) {
+      logger.warn(`All keys failed, waiting 5s before retry (round ${round + 1}/${maxRounds})`);
+      await sleep(5000);
     }
   }
 
-  throw new Error('All Gemini keys failed');
+  // Fallback — لو فشل كل شي، أعطه درجة جزئية مع رسالة
+  logger.error('All Gemini attempts failed — using fallback score');
+  return {
+    score: 0,
+    feedback: 'تعذر تصحيح الإجابة تلقائياً بسبب ضغط على الخدمة. سيتم مراجعة الإجابة لاحقاً.',
+  };
 }
