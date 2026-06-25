@@ -11,6 +11,12 @@ const keys = [
   process.env.GEMINI_KEY_7!,
 ].filter(Boolean);
 
+const MODELS = [
+  'gemini-2.5-flash-lite',
+  'gemini-2.0-flash-lite',
+  'gemini-1.5-flash-8b',
+];
+
 let currentKeyIndex = 0;
 
 function getClient(): GoogleGenerativeAI {
@@ -54,7 +60,6 @@ export type QuestionGradeResult = {
   feedback: string;
 };
 
-// ═══ تصحيح كل أسئلة الامتحان بطلب واحد ═══
 export async function gradeExam(
   questions: QuestionGradeInput[]
 ): Promise<QuestionGradeResult[]> {
@@ -67,51 +72,50 @@ export async function gradeExam(
     if (q.studentImages && q.studentImages.length > 0) {
       for (const imgUrl of q.studentImages) {
         const imgData = await urlToBase64(imgUrl);
-        if (imgData) {
-          parts.push({ inlineData: { mimeType: imgData.mimeType, data: imgData.data } });
-        }
+        if (imgData) parts.push({ inlineData: { mimeType: imgData.mimeType, data: imgData.data } });
       }
     }
     if (q.modelImages && q.modelImages.length > 0) {
       for (const imgUrl of q.modelImages) {
         const imgData = await urlToBase64(imgUrl);
-        if (imgData) {
-          parts.push({ inlineData: { mimeType: imgData.mimeType, data: imgData.data } });
-        }
+        if (imgData) parts.push({ inlineData: { mimeType: imgData.mimeType, data: imgData.data } });
       }
     }
   }
 
-  // محاولة مع كل المفاتيح
-  for (let attempt = 0; attempt < keys.length; attempt++) {
-    try {
-      const model = getClient().getGenerativeModel({
-        model: 'gemini-2.5-flash-lite',
-      });
+  // نجرب كل موديل مع كل المفاتيح
+  for (const modelName of MODELS) {
+    for (let attempt = 0; attempt < keys.length; attempt++) {
+      try {
+        const model = getClient().getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(parts);
+        const text = result.response.text().trim();
+        const clean = text.replace(/```json|```/g, '').trim();
+        const parsed = JSON.parse(clean);
 
-      const result = await model.generateContent(parts);
-      const text = result.response.text().trim();
-      const clean = text.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(clean);
+        if (!Array.isArray(parsed)) throw new Error('Response is not an array');
 
-      // التحقق من النتيجة
-      if (!Array.isArray(parsed)) throw new Error('Response is not an array');
+        logger.info(`Graded successfully — model: ${modelName}, key: ${currentKeyIndex}`);
 
-      return parsed.map((item: any, index: number) => ({
-        questionId: questions[index].questionId,
-        score: Math.min(Math.max(Number(item.score ?? 0), 0), questions[index].degree),
-        feedback: item.feedback ?? 'لا يوجد تحليل',
-      }));
+        return parsed.map((item: any, index: number) => ({
+          questionId: questions[index].questionId,
+          score: Math.min(Math.max(Number(item.score ?? 0), 0), questions[index].degree),
+          feedback: item.feedback ?? 'لا يوجد تحليل',
+        }));
 
-    } catch (err) {
-      logger.warn(`Gemini key ${currentKeyIndex} failed (attempt ${attempt + 1}): ${(err as Error).message}`);
-      rotateKey();
-      if (attempt < keys.length - 1) await sleep(2000);
+      } catch (err) {
+        logger.warn(`Model ${modelName} key ${currentKeyIndex} failed (attempt ${attempt + 1}): ${(err as Error).message}`);
+        rotateKey();
+        if (attempt < keys.length - 1) await sleep(1000);
+      }
     }
+
+    logger.warn(`All keys failed for model ${modelName} — trying next model...`);
+    await sleep(3000);
   }
 
-  // Fallback — لو فشل كل شي
-  logger.error('All Gemini keys failed — using fallback scores');
+  // Fallback
+  logger.error('All models and keys failed — using fallback scores');
   return questions.map(q => ({
     questionId: q.questionId,
     score: 0,
