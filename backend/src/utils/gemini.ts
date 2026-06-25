@@ -37,7 +37,8 @@ async function urlToBase64(url: string): Promise<{ data: string; mimeType: strin
   }
 }
 
-export async function gradeAnswer(params: {
+export type QuestionGradeInput = {
+  questionId: string;
   questionText: string;
   modelAnswer: string;
   studentAnswer: string;
@@ -45,96 +46,101 @@ export async function gradeAnswer(params: {
   aiNotes?: string | null;
   modelImages?: string[];
   studentImages?: string[];
-}): Promise<{ score: number; feedback: string }> {
-  const { questionText, modelAnswer, studentAnswer, degree, aiNotes, modelImages, studentImages } = params;
+};
 
-  const hasStudentImages = studentImages && studentImages.length > 0;
-  const hasStudentText = studentAnswer && studentAnswer.trim().length > 0;
+export type QuestionGradeResult = {
+  questionId: string;
+  score: number;
+  feedback: string;
+};
 
-  const prompt = `أنت مصحح امتحانات متخصص لوزارة التربية العراقية.
-مهمتك تصحيح إجابة الطالب بناءً على الإجابة النموذجية فقط، لا تستخدم أي معلومة خارجية.
+// ═══ تصحيح كل أسئلة الامتحان بطلب واحد ═══
+export async function gradeExam(
+  questions: QuestionGradeInput[]
+): Promise<QuestionGradeResult[]> {
 
-السؤال: ${questionText}
+  const prompt = buildBatchPrompt(questions);
+  const parts: any[] = [{ text: prompt }];
 
-الإجابة النموذجية: ${modelAnswer}
-
-إجابة الطالب النصية: ${hasStudentText ? studentAnswer : 'لم يكتب الطالب إجابة نصية'}
-
-${hasStudentImages ? `ملاحظة مهمة: الطالب أرفق ${studentImages!.length} صورة كجزء من إجابته. الصور مرفقة في هذا الطلب، قم بمراجعتها وتصحيحها.` : ''}
-
-الدرجة الكاملة للسؤال: ${degree}
-
-${aiNotes ? `ملاحظات للمصحح: ${aiNotes}` : ''}
-
-قم بتصحيح الإجابة (النصية والصور إن وجدت) وأعط:
-1. الدرجة المستحقة (رقم من 0 إلى ${degree})
-2. تحليل مختصر يوضح نقاط القوة والضعف
-
-أجب بصيغة JSON فقط بدون أي نص إضافي:
-{
-  "score": <الدرجة>,
-  "feedback": "<التحليل>"
-}`;
-
-  // محاولة مع كل المفاتيح + retry
-  const maxRounds = 3; // 3 جولات على كل المفاتيح
-  for (let round = 0; round < maxRounds; round++) {
-    for (let attempt = 0; attempt < keys.length; attempt++) {
-      try {
-        const model = getClient().getGenerativeModel({
-          model: 'gemini-2.5-flash-lite',
-        });
-
-        const parts: any[] = [{ text: prompt }];
-
-        if (hasStudentImages) {
-          for (const imgUrl of studentImages!) {
-            const imgData = await urlToBase64(imgUrl);
-            if (imgData) {
-              parts.push({ inlineData: { mimeType: imgData.mimeType, data: imgData.data } });
-            }
-          }
+  // إضافة الصور
+  for (const q of questions) {
+    if (q.studentImages && q.studentImages.length > 0) {
+      for (const imgUrl of q.studentImages) {
+        const imgData = await urlToBase64(imgUrl);
+        if (imgData) {
+          parts.push({ inlineData: { mimeType: imgData.mimeType, data: imgData.data } });
         }
-
-        if (modelImages && modelImages.length > 0) {
-          for (const imgUrl of modelImages) {
-            const imgData = await urlToBase64(imgUrl);
-            if (imgData) {
-              parts.push({ inlineData: { mimeType: imgData.mimeType, data: imgData.data } });
-            }
-          }
-        }
-
-        const result = await model.generateContent(parts);
-        const text = result.response.text().trim();
-        const clean = text.replace(/```json|```/g, '').trim();
-        const parsed = JSON.parse(clean);
-
-        return {
-          score: Math.min(Math.max(Number(parsed.score), 0), degree),
-          feedback: parsed.feedback,
-        };
-      } catch (err) {
-        const errMsg = (err as Error).message;
-        logger.warn(`Gemini key ${currentKeyIndex} failed (round ${round + 1}): ${errMsg}`);
-        rotateKey();
-
-        // تأخير بين المحاولات
-        if (attempt < keys.length - 1) await sleep(1000);
       }
     }
-
-    // تأخير بين الجولات
-    if (round < maxRounds - 1) {
-      logger.warn(`All keys failed, waiting 5s before retry (round ${round + 1}/${maxRounds})`);
-      await sleep(5000);
+    if (q.modelImages && q.modelImages.length > 0) {
+      for (const imgUrl of q.modelImages) {
+        const imgData = await urlToBase64(imgUrl);
+        if (imgData) {
+          parts.push({ inlineData: { mimeType: imgData.mimeType, data: imgData.data } });
+        }
+      }
     }
   }
 
-  // Fallback — لو فشل كل شي، أعطه درجة جزئية مع رسالة
-  logger.error('All Gemini attempts failed — using fallback score');
-  return {
+  // محاولة مع كل المفاتيح
+  for (let attempt = 0; attempt < keys.length; attempt++) {
+    try {
+      const model = getClient().getGenerativeModel({
+        model: 'gemini-2.5-flash-lite',
+      });
+
+      const result = await model.generateContent(parts);
+      const text = result.response.text().trim();
+      const clean = text.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean);
+
+      // التحقق من النتيجة
+      if (!Array.isArray(parsed)) throw new Error('Response is not an array');
+
+      return parsed.map((item: any, index: number) => ({
+        questionId: questions[index].questionId,
+        score: Math.min(Math.max(Number(item.score ?? 0), 0), questions[index].degree),
+        feedback: item.feedback ?? 'لا يوجد تحليل',
+      }));
+
+    } catch (err) {
+      logger.warn(`Gemini key ${currentKeyIndex} failed (attempt ${attempt + 1}): ${(err as Error).message}`);
+      rotateKey();
+      if (attempt < keys.length - 1) await sleep(2000);
+    }
+  }
+
+  // Fallback — لو فشل كل شي
+  logger.error('All Gemini keys failed — using fallback scores');
+  return questions.map(q => ({
+    questionId: q.questionId,
     score: 0,
-    feedback: 'تعذر تصحيح الإجابة تلقائياً بسبب ضغط على الخدمة. سيتم مراجعة الإجابة لاحقاً.',
-  };
+    feedback: 'تعذر التصحيح التلقائي بسبب ضغط على الخدمة.',
+  }));
+}
+
+function buildBatchPrompt(questions: QuestionGradeInput[]): string {
+  const questionsText = questions.map((q, index) => `
+--- السؤال ${index + 1} ---
+معرف السؤال: ${q.questionId}
+نص السؤال: ${q.questionText}
+الإجابة النموذجية: ${q.modelAnswer}
+إجابة الطالب: ${q.studentAnswer?.trim() ? q.studentAnswer : 'لم يكتب إجابة'}
+الدرجة الكاملة: ${q.degree}
+${q.aiNotes ? `ملاحظات للمصحح: ${q.aiNotes}` : ''}
+${q.studentImages && q.studentImages.length > 0 ? `(الطالب أرفق ${q.studentImages.length} صورة مع إجابته)` : ''}
+`).join('\n');
+
+  return `أنت مصحح امتحانات متخصص لوزارة التربية العراقية.
+مهمتك تصحيح إجابات الطالب بناءً على الإجابات النموذجية فقط، لا تستخدم أي معلومة خارجية.
+
+${questionsText}
+
+قم بتصحيح جميع الأسئلة وأعد النتيجة بصيغة JSON فقط — مصفوفة بنفس ترتيب الأسئلة:
+[
+  { "score": <الدرجة>, "feedback": "<التحليل>" },
+  { "score": <الدرجة>, "feedback": "<التحليل>" }
+]
+
+بدون أي نص إضافي خارج الـ JSON.`;
 }

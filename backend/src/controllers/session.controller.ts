@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { prisma } from '../utils/prisma';
-import { gradeAnswer } from '../utils/gemini';
+import { gradeExam, QuestionGradeInput } from '../utils/gemini';
 import { uploadImage } from '../utils/cloudinary';
 import { AuthRequest } from '../types';
 import logger from '../utils/logger';
@@ -152,43 +152,42 @@ export async function submitExam(req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    let totalScore = 0;
-    const gradingResults = [];
-
-    for (const question of session.exam.questions) {
+    // ═══ تجميع كل الأسئلة بطلب واحد ═══
+    const questionsInput: QuestionGradeInput[] = session.exam.questions.map(question => {
       const studentAnswer = session.studentAnswers.find(a => a.questionId === question.id);
+      return {
+        questionId: question.id,
+        questionText: question.text,
+        modelAnswer: question.modelAnswer,
+        studentAnswer: studentAnswer?.answerText ?? '',
+        degree: question.degree,
+        aiNotes: question.aiNotes,
+        modelImages: question.modelImages,
+        studentImages: studentAnswer?.answerImages ?? [],
+      };
+    });
 
-      // 🔧 التعديل: حاول التصحيح، وإذا فشل استخدم قيماً افتراضية
-      let result = { score: 0, feedback: 'تعذر التصحيح التلقائي' };
-      try {
-        result = await gradeAnswer({
-          questionText: question.text,
-          modelAnswer: question.modelAnswer,
-          studentAnswer: studentAnswer?.answerText ?? '',
-          degree: question.degree,
-          aiNotes: question.aiNotes,
-          modelImages: question.modelImages,
-          studentImages: studentAnswer?.answerImages ?? [],
-        });
-      } catch (err) {
-        logger.error(`gradeAnswer failed for question ${question.id}: ${(err as Error).message}`);
-        // نستمر بالحلقة مع result الافتراضي
-      }
+    // طلب واحد لكل الأسئلة
+    const gradingResults = await gradeExam(questionsInput);
 
+    let totalScore = 0;
+    for (const result of gradingResults) {
       totalScore += result.score;
 
+      const questionInput = questionsInput.find(q => q.questionId === result.questionId);
+
       await prisma.studentAnswer.upsert({
-        where: { sessionId_questionId: { sessionId, questionId: question.id } },
+        where: { sessionId_questionId: { sessionId, questionId: result.questionId } },
         update: { aiScore: result.score, aiFeedback: result.feedback },
         create: {
-          sessionId, questionId: question.id,
-          answerText: studentAnswer?.answerText ?? '',
-          answerImages: studentAnswer?.answerImages ?? [],
-          aiScore: result.score, aiFeedback: result.feedback,
+          sessionId,
+          questionId: result.questionId,
+          answerText: questionInput?.studentAnswer ?? '',
+          answerImages: questionInput?.studentImages ?? [],
+          aiScore: result.score,
+          aiFeedback: result.feedback,
         },
       });
-
-      gradingResults.push({ questionId: question.id, score: result.score, feedback: result.feedback });
     }
 
     const updatedSession = await prisma.examSession.update({
@@ -201,7 +200,12 @@ export async function submitExam(req: AuthRequest, res: Response): Promise<void>
     res.json({
       success: true,
       data: {
-        sessionId, totalScore, maxScore: updatedSession.maxScore, gradingResults,
+        sessionId, totalScore, maxScore: updatedSession.maxScore,
+        gradingResults: gradingResults.map(r => ({
+          questionId: r.questionId,
+          score: r.score,
+          feedback: r.feedback,
+        })),
         streak: {
           current: streakResult.newStreak, best: streakResult.bestStreak,
           isNewBest: streakResult.isNewBest, alreadyCompletedToday: streakResult.alreadyCompletedToday,
