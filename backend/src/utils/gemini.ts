@@ -120,19 +120,34 @@ export async function gradeExam(
 }
 
 function buildBatchPrompt(questions: QuestionGradeInput[]): string {
-  const questionsText = questions.map((q, index) => `
+  const questionsText = questions.map((q, index) => {
+    const hasText = q.studentAnswer?.trim();
+    const hasImages = q.studentImages && q.studentImages.length > 0;
+
+    let studentAnswerLine = '';
+    if (hasText && hasImages) {
+      studentAnswerLine = `إجابة الطالب النصية: ${q.studentAnswer}\n(كما أرفق ${q.studentImages!.length} صورة — راجعها أعلاه)`;
+    } else if (hasText) {
+      studentAnswerLine = `إجابة الطالب: ${q.studentAnswer}`;
+    } else if (hasImages) {
+      studentAnswerLine = `إجابة الطالب: الطالب أجاب عبر ${q.studentImages!.length} صورة فقط — راجع الصور أعلاه وصحح بناءً عليها`;
+    } else {
+      studentAnswerLine = `إجابة الطالب: لم يكتب إجابة ولم يرفع صور — الدرجة صفر`;
+    }
+
+    return `
 --- السؤال ${index + 1} ---
-معرف السؤال: ${q.questionId}
 نص السؤال: ${q.questionText}
 الإجابة النموذجية: ${q.modelAnswer}
-إجابة الطالب: ${q.studentAnswer?.trim() ? q.studentAnswer : 'لم يكتب إجابة'}
+${studentAnswerLine}
 الدرجة الكاملة: ${q.degree}
 ${q.aiNotes ? `ملاحظات للمصحح: ${q.aiNotes}` : ''}
-${q.studentImages && q.studentImages.length > 0 ? `(الطالب أرفق ${q.studentImages.length} صورة مع إجابته)` : ''}
-`).join('\n');
+`;
+  }).join('\n');
 
   return `أنت مصحح امتحانات متخصص لوزارة التربية العراقية.
 مهمتك تصحيح إجابات الطالب بناءً على الإجابات النموذجية فقط، لا تستخدم أي معلومة خارجية.
+الصور المرفقة في هذا الطلب هي إجابات الطلاب — قم بمراجعتها وتصحيحها.
 
 ${questionsText}
 
