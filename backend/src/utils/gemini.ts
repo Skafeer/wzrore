@@ -64,24 +64,73 @@ export async function gradeExam(
   questions: QuestionGradeInput[]
 ): Promise<QuestionGradeResult[]> {
 
-  const prompt = buildBatchPrompt(questions);
-  const parts: any[] = [{ text: prompt }];
+  const parts: any[] = [];
 
-  // إضافة الصور
-  for (const q of questions) {
-    if (q.studentImages && q.studentImages.length > 0) {
-      for (const imgUrl of q.studentImages) {
+  // مقدمة الـ prompt
+  let promptText = `أنت مصحح امتحانات متخصص لوزارة التربية العراقية.
+مهمتك تصحيح إجابات الطالب بناءً على الإجابات النموذجية فقط، لا تستخدم أي معلومة خارجية.
+كل سؤال له صوره الخاصة المذكورة بعده مباشرة — لا تطبق صور سؤال على سؤال آخر.
+
+`;
+
+  // نبني الـ parts بترتيب: نص السؤال ثم صوره مباشرة
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i];
+    const hasText = q.studentAnswer?.trim();
+    const hasStudentImages = q.studentImages && q.studentImages.length > 0;
+    const hasModelImages = q.modelImages && q.modelImages.length > 0;
+
+    let studentAnswerLine = '';
+    if (hasText && hasStudentImages) {
+      studentAnswerLine = `إجابة الطالب النصية: ${q.studentAnswer}\n(+ ${q.studentImages!.length} صورة مرفقة بعد هذا النص مباشرة)`;
+    } else if (hasText) {
+      studentAnswerLine = `إجابة الطالب: ${q.studentAnswer}`;
+    } else if (hasStudentImages) {
+      studentAnswerLine = `إجابة الطالب: عبر صور فقط — ${q.studentImages!.length} صورة مرفقة بعد هذا السؤال مباشرة`;
+    } else {
+      studentAnswerLine = `إجابة الطالب: لم يكتب إجابة ولم يرفع صور — الدرجة صفر`;
+    }
+
+    promptText += `
+--- السؤال ${i + 1} ---
+نص السؤال: ${q.questionText}
+الإجابة النموذجية: ${q.modelAnswer}
+${studentAnswerLine}
+الدرجة الكاملة: ${q.degree}
+${q.aiNotes ? `ملاحظات للمصحح: ${q.aiNotes}` : ''}
+${hasStudentImages || hasModelImages ? `[الصور الخاصة بالسؤال ${i + 1} تأتي بعد هذا النص مباشرة]` : ''}
+`;
+
+    // أضف النص المتراكم كـ part
+    parts.push({ text: promptText });
+    promptText = ''; // reset
+
+    // أضف صور الطالب مباشرة بعد نص السؤال
+    if (hasStudentImages) {
+      for (const imgUrl of q.studentImages!) {
         const imgData = await urlToBase64(imgUrl);
         if (imgData) parts.push({ inlineData: { mimeType: imgData.mimeType, data: imgData.data } });
       }
     }
-    if (q.modelImages && q.modelImages.length > 0) {
-      for (const imgUrl of q.modelImages) {
+
+    // أضف صور الإجابة النموذجية
+    if (hasModelImages) {
+      for (const imgUrl of q.modelImages!) {
         const imgData = await urlToBase64(imgUrl);
         if (imgData) parts.push({ inlineData: { mimeType: imgData.mimeType, data: imgData.data } });
       }
     }
   }
+
+  // التعليمات النهائية
+  parts.push({ text: `
+قم بتصحيح جميع الأسئلة بناءً على إجابة كل سؤال وصوره الخاصة فقط.
+أعد النتيجة بصيغة JSON فقط — مصفوفة بنفس ترتيب الأسئلة:
+[
+  { "score": <الدرجة>, "feedback": "<التحليل>" },
+  { "score": <الدرجة>, "feedback": "<التحليل>" }
+]
+بدون أي نص إضافي خارج الـ JSON.` });
 
   // نجرب كل موديل مع كل المفاتيح
   for (const modelName of MODELS) {
@@ -121,45 +170,4 @@ export async function gradeExam(
     score: 0,
     feedback: 'تعذر التصحيح التلقائي بسبب ضغط على الخدمة.',
   }));
-}
-
-function buildBatchPrompt(questions: QuestionGradeInput[]): string {
-  const questionsText = questions.map((q, index) => {
-    const hasText = q.studentAnswer?.trim();
-    const hasImages = q.studentImages && q.studentImages.length > 0;
-
-    let studentAnswerLine = '';
-    if (hasText && hasImages) {
-      studentAnswerLine = `إجابة الطالب النصية: ${q.studentAnswer}\n(كما أرفق ${q.studentImages!.length} صورة — راجعها أعلاه)`;
-    } else if (hasText) {
-      studentAnswerLine = `إجابة الطالب: ${q.studentAnswer}`;
-    } else if (hasImages) {
-      studentAnswerLine = `إجابة الطالب: الطالب أجاب عبر ${q.studentImages!.length} صورة فقط — راجع الصور أعلاه وصحح بناءً عليها`;
-    } else {
-      studentAnswerLine = `إجابة الطالب: لم يكتب إجابة ولم يرفع صور — الدرجة صفر`;
-    }
-
-    return `
---- السؤال ${index + 1} ---
-نص السؤال: ${q.questionText}
-الإجابة النموذجية: ${q.modelAnswer}
-${studentAnswerLine}
-الدرجة الكاملة: ${q.degree}
-${q.aiNotes ? `ملاحظات للمصحح: ${q.aiNotes}` : ''}
-`;
-  }).join('\n');
-
-  return `أنت مصحح امتحانات متخصص لوزارة التربية العراقية.
-مهمتك تصحيح إجابات الطالب بناءً على الإجابات النموذجية فقط، لا تستخدم أي معلومة خارجية.
-الصور المرفقة في هذا الطلب هي إجابات الطلاب — قم بمراجعتها وتصحيحها.
-
-${questionsText}
-
-قم بتصحيح جميع الأسئلة وأعد النتيجة بصيغة JSON فقط — مصفوفة بنفس ترتيب الأسئلة:
-[
-  { "score": <الدرجة>, "feedback": "<التحليل>" },
-  { "score": <الدرجة>, "feedback": "<التحليل>" }
-]
-
-بدون أي نص إضافي خارج الـ JSON.`;
 }
