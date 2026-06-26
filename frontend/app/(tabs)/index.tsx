@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, RefreshControl, ActivityIndicator, Animated,
+  StyleSheet, RefreshControl, Animated, Image,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,16 +25,16 @@ function getStreakMessage(streak: number, completedToday: boolean): string {
 
 function getTimeBasedGreeting(): string {
   const hour = new Date().getHours();
-  if (hour >= 5 && hour < 12) {
-    return 'صباح النشاط،';
-  } else if (hour >= 12 && hour < 18) {
-    return 'مساء النشاط،';
-  } else {
-    return 'طاب مساؤك،';
-  }
+  if (hour >= 5 && hour < 12) return 'صباح النشاط،';
+  if (hour >= 12 && hour < 18) return 'مساء النشاط،';
+  return 'طاب مساؤك،';
 }
 
-function HomeSkeleton({ rs, hp, pagePadding }: { rs: (size: number) => number; hp: (size: number) => number; pagePadding: number }) {
+function HomeSkeleton({ rs, hp, pagePadding }: {
+  rs: (size: number) => number;
+  hp: (size: number) => number;
+  pagePadding: number;
+}) {
   const opacity = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
@@ -131,10 +131,13 @@ export default function HomeScreen() {
   const [performance, setPerformance] = useState<PerformanceSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const hasFetched = useRef(false);
 
   const completedToday = user?.lastStudyDate
     ? new Date(user.lastStudyDate).toDateString() === new Date().toDateString()
     : false;
+
+  const streakProgress = Math.min(((user?.studyStreak ?? 0) % 7) / 7 * 100, 100);
 
   async function loadData() {
     try {
@@ -153,8 +156,14 @@ export default function HomeScreen() {
     }
   }
 
-  useEffect(() => { loadData(); }, []);
-  useFocusEffect(useCallback(() => { loadData(); }, []));
+  useEffect(() => {
+    loadData();
+    hasFetched.current = true;
+  }, []);
+
+  useFocusEffect(useCallback(() => {
+    if (hasFetched.current) loadData();
+  }, []));
 
   if (loading) {
     return <HomeSkeleton rs={rs} hp={hp} pagePadding={pagePadding} />;
@@ -166,16 +175,25 @@ export default function HomeScreen() {
       contentContainerStyle={{ paddingHorizontal: pagePadding, paddingBottom: hp(4) }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} />}
     >
+      {/* Header */}
       <MotionView delay={0} style={[styles.header, { paddingTop: rs(25), paddingBottom: hp(2) }]}>
         <View>
           <Text style={[styles.greetingText, { fontSize: rs(14) }]}>{getTimeBasedGreeting()}</Text>
           <Text style={[styles.userName, { fontSize: rs(22) }]}>{user?.name}</Text>
         </View>
-        <View style={[styles.avatarIcon, { width: rs(48), height: rs(48) }]}>
-          <Ionicons name="person" size={rs(22)} color={Colors.primary} />
-        </View>
+        {user?.avatar ? (
+          <Image
+            source={{ uri: user.avatar }}
+            style={{ width: rs(48), height: rs(48), borderRadius: rs(24) }}
+          />
+        ) : (
+          <View style={[styles.avatarIcon, { width: rs(48), height: rs(48) }]}>
+            <Ionicons name="person" size={rs(22)} color={Colors.primary} />
+          </View>
+        )}
       </MotionView>
 
+      {/* Streak Card */}
       <MotionView delay={80} style={[styles.streakCard, { marginBottom: rs(24) }]}>
         <View style={styles.streakTop}>
           <View style={styles.streakLeft}>
@@ -187,23 +205,26 @@ export default function HomeScreen() {
               <Text style={[styles.streakLabel, { fontSize: rs(13) }]}>يوم متواصل</Text>
             </View>
           </View>
-          
           <View style={[styles.bestBadge, { paddingVertical: rs(6), paddingHorizontal: rs(14), borderRadius: rs(30) }]}>
             <Ionicons name="trophy" size={rs(14)} color={Colors.secondary} />
             <Text style={[styles.bestBadgeSpan, { fontSize: rs(14) }]}>{user?.bestStreak ?? 0}</Text>
             <Text style={[styles.bestBadgeSmall, { fontSize: rs(10) }]}>أفضل</Text>
           </View>
         </View>
-        
+
         <Text style={[styles.streakMsg, { fontSize: rs(11), marginBottom: rs(14) }]}>
           {getStreakMessage(user?.studyStreak ?? 0, completedToday)}
         </Text>
-        
+
         <View style={[styles.streakProgress, { height: rs(4), borderRadius: rs(4) }]}>
-          <View style={[styles.streakProgressFill, { width: '60%', borderRadius: rs(4) }]} />
+          <View style={[styles.streakProgressFill, {
+            width: `${streakProgress}%`,
+            borderRadius: rs(4),
+          }]} />
         </View>
       </MotionView>
 
+      {/* Start Exam */}
       <MotionView delay={120}>
         <PressableScale
           style={[styles.card, { padding: rs(24), marginBottom: rs(20) }]}
@@ -218,8 +239,7 @@ export default function HomeScreen() {
               <Ionicons name="play-circle" size={rs(18)} color={Colors.primary} />
             </View>
           </View>
-
-          <PressableScale 
+          <PressableScale
             style={[styles.ctaBtn, { paddingVertical: rs(14), borderRadius: rs(14), marginTop: rs(16) }]}
             onPress={() => router.push('/(tabs)/exams')}
           >
@@ -228,6 +248,7 @@ export default function HomeScreen() {
         </PressableScale>
       </MotionView>
 
+      {/* Last Exam */}
       {lastExam && (
         <MotionView delay={160} style={[styles.card, { padding: rs(24), marginBottom: rs(20) }]}>
           <View style={[styles.cardHeader, { marginBottom: rs(14) }]}>
@@ -238,7 +259,7 @@ export default function HomeScreen() {
               <Ionicons name="time-outline" size={rs(18)} color={Colors.primary} />
             </View>
           </View>
-          
+
           <View style={styles.examRow}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.examSubject, { fontSize: rs(17) }]}>{lastExam.subject}</Text>
@@ -250,7 +271,6 @@ export default function HomeScreen() {
                 </Text>
               </View>
             </View>
-            
             <View style={[styles.scoreBox, { paddingVertical: rs(12), paddingHorizontal: rs(18), borderRadius: rs(14), minWidth: rs(70) }]}>
               <Text style={[styles.scoreNum, { fontSize: rs(22) }]}>
                 {lastExam.totalScore?.toFixed(0)}
@@ -258,7 +278,7 @@ export default function HomeScreen() {
               <Text style={[styles.scoreMax, { fontSize: rs(10) }]}>من {lastExam.maxScore}</Text>
             </View>
           </View>
-          
+
           <PressableScale
             style={[styles.secondaryBtn, { paddingVertical: rs(12), borderRadius: rs(14), marginTop: rs(16) }]}
             onPress={() => router.push(`/result/${lastExam.sessionId}` as never)}
@@ -268,6 +288,7 @@ export default function HomeScreen() {
         </MotionView>
       )}
 
+      {/* Performance */}
       {performance && (
         <MotionView delay={200} style={[styles.card, { padding: rs(24), marginBottom: 0 }]}>
           <View style={[styles.cardHeader, { marginBottom: rs(16) }]}>
@@ -278,7 +299,7 @@ export default function HomeScreen() {
               <Ionicons name="bar-chart" size={rs(18)} color={Colors.primary} />
             </View>
           </View>
-          
+
           <View style={styles.perfGrid}>
             <View style={[styles.perfBox, { padding: rs(20), borderRadius: rs(16) }]}>
               <View style={[styles.perfBoxBorder, { height: rs(3), left: rs(20), right: rs(20), borderTopLeftRadius: rs(4), borderTopRightRadius: rs(4) }]} />
@@ -299,7 +320,6 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   greetingText: { color: Colors.text.secondary, fontFamily: 'Tajawal_500Medium' },
   userName: { color: Colors.text.primary, fontFamily: 'Tajawal_800ExtraBold', marginTop: 2 },
