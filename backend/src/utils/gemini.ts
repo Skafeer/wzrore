@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 import logger from './logger';
 
 const keys = [
@@ -13,9 +14,9 @@ const keys = [
 
 const MODELS = [
   'gemini-2.5-flash-lite',
-  'gemini-2.0-flash-lite',
-  'gemini-1.5-flash-8b',
 ];
+
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 let currentKeyIndex = 0;
 
@@ -101,11 +102,9 @@ ${q.aiNotes ? `ملاحظات للمصحح: ${q.aiNotes}` : ''}
 ${hasStudentImages || hasModelImages ? `[الصور الخاصة بالسؤال ${i + 1} تأتي بعد هذا النص مباشرة]` : ''}
 `;
 
-    // أضف النص المتراكم كـ part
     parts.push({ text: promptText });
-    promptText = ''; // reset
+    promptText = '';
 
-    // أضف صور الطالب مباشرة بعد نص السؤال
     if (hasStudentImages) {
       for (const imgUrl of q.studentImages!) {
         const imgData = await urlToBase64(imgUrl);
@@ -113,7 +112,6 @@ ${hasStudentImages || hasModelImages ? `[الصور الخاصة بالسؤال 
       }
     }
 
-    // أضف صور الإجابة النموذجية
     if (hasModelImages) {
       for (const imgUrl of q.modelImages!) {
         const imgData = await urlToBase64(imgUrl);
@@ -122,7 +120,6 @@ ${hasStudentImages || hasModelImages ? `[الصور الخاصة بالسؤال 
     }
   }
 
-  // التعليمات النهائية
   parts.push({ text: `
 قم بتصحيح جميع الأسئلة بناءً على إجابة كل سؤال وصوره الخاصة فقط.
 أعد النتيجة بصيغة JSON فقط — مصفوفة بنفس ترتيب الأسئلة:
@@ -132,7 +129,7 @@ ${hasStudentImages || hasModelImages ? `[الصور الخاصة بالسؤال 
 ]
 بدون أي نص إضافي خارج الـ JSON.` });
 
-  // نجرب كل موديل مع كل المفاتيح
+  // ═══ محاولة Gemini ═══
   for (const modelName of MODELS) {
     for (let attempt = 0; attempt < keys.length; attempt++) {
       try {
@@ -163,11 +160,79 @@ ${hasStudentImages || hasModelImages ? `[الصور الخاصة بالسؤال 
     await sleep(3000);
   }
 
-  // Fallback
+  // ═══ Fallback: Groq ═══
+  logger.warn('All Gemini models failed — trying Groq...');
+  try {
+    const results = await gradeWithGroq(questions);
+    logger.info('Graded successfully with Groq');
+    return results;
+  } catch (err) {
+    logger.error(`Groq also failed: ${(err as Error).message}`);
+  }
+
+  // ═══ Fallback نهائي ═══
   logger.error('All models and keys failed — using fallback scores');
   return questions.map(q => ({
     questionId: q.questionId,
     score: 0,
     feedback: 'تعذر التصحيح التلقائي بسبب ضغط على الخدمة.',
   }));
+}
+
+async function gradeWithGroq(questions: QuestionGradeInput[]): Promise<QuestionGradeResult[]> {
+  const prompt = buildGroqPrompt(questions);
+
+  const response = await groq.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0.1,
+  });
+
+  const text = response.choices[0]?.message?.content?.trim() ?? '';
+  const clean = text.replace(/```json|```/g, '').trim();
+  const parsed = JSON.parse(clean);
+
+  if (!Array.isArray(parsed)) throw new Error('Response is not an array');
+
+  return parsed.map((item: any, index: number) => ({
+    questionId: questions[index].questionId,
+    score: Math.min(Math.max(Number(item.score ?? 0), 0), questions[index].degree),
+    feedback: item.feedback ?? 'لا يوجد تحليل',
+  }));
+}
+
+function buildGroqPrompt(questions: QuestionGradeInput[]): string {
+  const questionsText = questions.map((q, index) => {
+    const hasText = q.studentAnswer?.trim();
+    const hasImages = q.studentImages && q.studentImages.length > 0;
+
+    let studentAnswerLine = '';
+    if (hasText) {
+      studentAnswerLine = `إجابة الطالب: ${q.studentAnswer}`;
+    } else if (hasImages) {
+      studentAnswerLine = `إجابة الطالب: أرفق صوراً فقط (لا يمكن قراءة الصور — أعطه درجة جزئية 50%)`;
+    } else {
+      studentAnswerLine = `إجابة الطالب: لم يكتب إجابة — الدرجة صفر`;
+    }
+
+    return `
+--- السؤال ${index + 1} ---
+نص السؤال: ${q.questionText}
+الإجابة النموذجية: ${q.modelAnswer}
+${studentAnswerLine}
+الدرجة الكاملة: ${q.degree}
+${q.aiNotes ? `ملاحظات للمصحح: ${q.aiNotes}` : ''}
+`;
+  }).join('\n');
+
+  return `أنت مصحح امتحانات متخصص لوزارة التربية العراقية.
+صحح إجابات الطالب بناءً على الإجابات النموذجية فقط، لا تستخدم أي معلومة خارجية.
+
+${questionsText}
+
+أعد النتيجة بصيغة JSON فقط — مصفوفة بنفس ترتيب الأسئلة:
+[
+  { "score": <الدرجة>, "feedback": "<التحليل>" }
+]
+بدون أي نص إضافي خارج الـ JSON.`;
 }
