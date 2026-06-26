@@ -65,6 +65,30 @@ export async function startExam(req: AuthRequest, res: Response): Promise<void> 
       }
     }
 
+    // ═══ تحقق من جلسة غير مكتملة لنفس الامتحان ═══
+    const existingSession = await prisma.examSession.findFirst({
+      where: { userId, examId, isCompleted: false },
+    });
+
+    if (existingSession) {
+      logger.info(`Resuming existing session ${existingSession.id} for user ${userId}`);
+      res.status(200).json({
+        success: true,
+        resumed: true,
+        data: {
+          sessionId: existingSession.id,
+          exam: {
+            id: exam.id,
+            title: exam.title,
+            duration: exam.duration,
+            questions: exam.questions,
+          },
+        },
+      });
+      return;
+    }
+
+    // ═══ إنشاء جلسة جديدة ═══
     const session = await prisma.examSession.create({
       data: {
         userId, examId, totalScore: 0,
@@ -76,6 +100,7 @@ export async function startExam(req: AuthRequest, res: Response): Promise<void> 
 
     res.status(201).json({
       success: true,
+      resumed: false,
       data: {
         sessionId: session.id,
         exam: { id: exam.id, title: exam.title, duration: exam.duration, questions: exam.questions },
@@ -167,7 +192,6 @@ export async function submitExam(req: AuthRequest, res: Response): Promise<void>
       };
     });
 
-    // طلب واحد لكل الأسئلة
     const gradingResults = await gradeExam(questionsInput);
 
     let totalScore = 0;
