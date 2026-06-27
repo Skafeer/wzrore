@@ -65,7 +65,17 @@ export async function startExam(req: AuthRequest, res: Response): Promise<void> 
       }
     }
 
-    // ═══ إنشاء جلسة جديدة دائماً ═══
+    // ═══ أغلق أي جلسة غير مكتملة لهذا المستخدم فوراً ═══
+    const closedCount = await prisma.examSession.updateMany({
+      where: { userId, isCompleted: false },
+      data: { isCompleted: true, submittedAt: new Date(), totalScore: 0 },
+    });
+
+    if (closedCount.count > 0) {
+      logger.info(`Closed ${closedCount.count} open session(s) for user ${userId} before starting new exam`);
+    }
+
+    // ═══ إنشاء جلسة جديدة ═══
     const session = await prisma.examSession.create({
       data: {
         userId, examId, totalScore: 0,
