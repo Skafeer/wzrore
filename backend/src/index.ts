@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-import cron from 'node-cron'; // ✅ استخدم مكتبة مستقلة
+import cron from 'node-cron';
 
 import authRoutes from './routes/auth.routes';
 import subjectRoutes from './routes/subject.routes';
@@ -36,10 +36,12 @@ app.use(cors({
   credentials: false,
 }));
 
-app.options('*', cors()); // ✅ تصحيح المسار
+// ✅ إزالة السطر المسبب للخطأ: app.options('/{*path}', cors());
+// بدلاً من ذلك، نكتفي بـ cors() middleware أعلاه،
+// أو نستخدم الصيغة الصحيحة:
+// app.options('*', cors());
 
 // ═══ Rate Limiting ═══
-// عام — 1000 طلب كل 15 دقيقة
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 1000,
@@ -48,19 +50,17 @@ app.use(rateLimit({
   message: { success: false, message: 'طلبات كثيرة، حاول لاحقاً' },
 }));
 
-// المصادقة — رفع الحد قليلاً
 app.use('/api/auth', rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100, // ✅ رفع من 30 إلى 100
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'محاولات كثيرة، حاول بعد 15 دقيقة' },
 }));
 
-// الإشعارات — رفع الحد
 app.use('/api/notifications/admin', rateLimit({
   windowMs: 60 * 1000,
-  max: 50, // ✅ رفع من 20 إلى 50
+  max: 50,
   message: { success: false, message: 'حاول لاحقاً' },
 }));
 
@@ -73,13 +73,12 @@ app.get('/health', (req, res) => {
   res.json({ success: true, message: 'Sawab API is running 🚀' });
 });
 
-// ✅ إضافة مسار رئيسي
 app.get('/', (req, res) => {
   res.json({ success: true, message: 'Sawab API is running' });
 });
 
-// ═══ Streak Cron — باستخدام node-cron ═══
-cron.schedule('30 0 * * *', () => { // ✅ كل يوم في 00:30
+// ═══ Streak Cron ═══
+cron.schedule('30 0 * * *', () => {
   console.log('🔄 Running streak reset cron job...');
   checkAndResetStreaks();
 });
