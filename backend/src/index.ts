@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import cron from 'node-cron'; // ✅ استخدم مكتبة مستقلة
 
 import authRoutes from './routes/auth.routes';
 import subjectRoutes from './routes/subject.routes';
@@ -27,16 +28,18 @@ app.set('trust proxy', 1);
 app.use(helmet({
   crossOriginResourcePolicy: false,
 }));
+
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: false,
 }));
-app.options('/{*path}', cors());
+
+app.options('*', cors()); // ✅ تصحيح المسار
 
 // ═══ Rate Limiting ═══
-// عام — 1000 طلب كل 15 دقيقة (يتحمل 50 طالب × 20 طلب)
+// عام — 1000 طلب كل 15 دقيقة
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 1000,
@@ -45,19 +48,19 @@ app.use(rateLimit({
   message: { success: false, message: 'طلبات كثيرة، حاول لاحقاً' },
 }));
 
-// المصادقة — أشد حماية
+// المصادقة — رفع الحد قليلاً
 app.use('/api/auth', rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 100, // ✅ رفع من 30 إلى 100
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'محاولات كثيرة، حاول بعد 15 دقيقة' },
 }));
 
-// الإشعارات — حماية متوسطة
+// الإشعارات — رفع الحد
 app.use('/api/notifications/admin', rateLimit({
   windowMs: 60 * 1000,
-  max: 20,
+  max: 50, // ✅ رفع من 20 إلى 50
   message: { success: false, message: 'حاول لاحقاً' },
 }));
 
@@ -70,25 +73,16 @@ app.get('/health', (req, res) => {
   res.json({ success: true, message: 'Sawab API is running 🚀' });
 });
 
+// ✅ إضافة مسار رئيسي
+app.get('/', (req, res) => {
+  res.json({ success: true, message: 'Sawab API is running' });
+});
 
-
-// ═══ Streak Cron — كل منتصف ليل ═══
-function scheduleMidnightCron() {
-  const now = new Date();
-  const night = new Date(now);
-  night.setHours(24, 0, 30, 0); // منتصف الليل + 30 ثانية
-
-  const msUntilMidnight = night.getTime() - now.getTime();
-
-  setTimeout(() => {
-    checkAndResetStreaks();
-    // بعدين كل 24 ساعة
-    setInterval(checkAndResetStreaks, 24 * 60 * 60 * 1000);
-  }, msUntilMidnight);
-}
-
-scheduleMidnightCron();
-
+// ═══ Streak Cron — باستخدام node-cron ═══
+cron.schedule('30 0 * * *', () => { // ✅ كل يوم في 00:30
+  console.log('🔄 Running streak reset cron job...');
+  checkAndResetStreaks();
+});
 
 // ═══ Routes ═══
 app.use('/api/auth', authRoutes);
