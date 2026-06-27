@@ -5,12 +5,27 @@ import { uploadImage } from '../utils/cloudinary';
 import { AuthRequest } from '../types';
 import logger from '../utils/logger';
 
+async function resolveSubscription(userId: string) {
+  const now = new Date();
+  const subscription = await prisma.subscription.findUnique({ where: { userId } });
+
+  if (subscription?.status === 'ACTIVE' && new Date(subscription.endDate) < now) {
+    await prisma.subscription.update({ where: { userId }, data: { status: 'EXPIRED' } });
+    subscription.status = 'EXPIRED';
+  }
+
+  return subscription;
+}
+
 export async function getProfile(req: AuthRequest, res: Response): Promise<void> {
   try {
     const userId = req.user!.id;
-    const user = await prisma.user.findUnique({ where: { id: userId }, include: { subscription: true } });
 
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) { res.status(404).json({ success: false, message: 'المستخدم غير موجود' }); return; }
+
+    // تحقق من الاشتراك وحدّثه إذا انتهى
+    const subscription = await resolveSubscription(userId);
 
     res.json({
       success: true,
@@ -18,7 +33,7 @@ export async function getProfile(req: AuthRequest, res: Response): Promise<void>
         id: user.id, name: user.name, phone: user.phone, province: user.province,
         avatar: user.avatar, studyStreak: user.studyStreak, bestStreak: user.bestStreak,
         streakFreeze: user.streakFreeze, lastStudyDate: user.lastStudyDate,
-        subscription: user.subscription, createdAt: user.createdAt,
+        subscription, createdAt: user.createdAt,
       },
     });
   } catch (err) {
@@ -85,7 +100,7 @@ export async function adminGetUsers(req: Request, res: Response): Promise<void> 
       ];
     }
 
-    if (hasSubscription === 'true') where.subscription = { status: 'ACTIVE' };
+    if (hasSubscription === 'true') where.subscription = { status: 'ACTIVE', endDate: { gt: new Date() } };
     else if (hasSubscription === 'false') where.subscription = null;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -146,7 +161,10 @@ export async function adminUpdateUserFull(req: Request, res: Response): Promise<
     if (password) data.password = await bcrypt.hash(password, 12);
 
     const user = await prisma.user.update({ where: { id }, data });
-    res.json({ success: true, message: 'تم تحديث بيانات المستخدم', data: { id: user.id, name: user.name, phone: user.phone, province: user.province } });
+    res.json({
+      success: true, message: 'تم تحديث بيانات المستخدم',
+      data: { id: user.id, name: user.name, phone: user.phone, province: user.province },
+    });
   } catch (err) {
     logger.error(`adminUpdateUserFull — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });

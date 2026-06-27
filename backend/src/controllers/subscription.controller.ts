@@ -9,6 +9,19 @@ function hashCode(code: string): string {
     .update(code.trim().toUpperCase()).digest('hex');
 }
 
+// ═══ helper مشترك لتحقق الاشتراك وتحديثه ═══
+async function resolveSubscription(userId: string) {
+  const now = new Date();
+  const subscription = await prisma.subscription.findUnique({ where: { userId } });
+
+  if (subscription?.status === 'ACTIVE' && new Date(subscription.endDate) < now) {
+    await prisma.subscription.update({ where: { userId }, data: { status: 'EXPIRED' } });
+    subscription.status = 'EXPIRED';
+  }
+
+  return subscription;
+}
+
 export async function redeemCode(req: AuthRequest, res: Response): Promise<void> {
   try {
     const { code } = req.body;
@@ -30,6 +43,7 @@ export async function redeemCode(req: AuthRequest, res: Response): Promise<void>
     else if (subCode.plan === 'YEARLY') endDate.setFullYear(endDate.getFullYear() + 1);
 
     await prisma.subscriptionCode.update({ where: { code: hashed }, data: { isUsed: true, usedBy: userId, usedAt: new Date() } });
+
     const subscription = await prisma.subscription.upsert({
       where: { userId },
       update: { plan: subCode.plan, status: 'ACTIVE', startDate, endDate },
@@ -46,15 +60,14 @@ export async function redeemCode(req: AuthRequest, res: Response): Promise<void>
 export async function getMySubscription(req: AuthRequest, res: Response): Promise<void> {
   try {
     const userId = req.user!.id;
-    const subscription = await prisma.subscription.findUnique({ where: { userId } });
+    const now = new Date();
+
+    const subscription = await resolveSubscription(userId);
     const isLaunchPeriod = await checkLaunchPeriod();
-    res.json({
-      success: true,
-      data: {
-        subscription, isLaunchPeriod,
-        isActive: isLaunchPeriod || (subscription?.status === 'ACTIVE' && new Date(subscription.endDate) > new Date()),
-      },
-    });
+    const isActive = isLaunchPeriod ||
+      (subscription?.status === 'ACTIVE' && new Date(subscription.endDate) > now);
+
+    res.json({ success: true, data: { subscription, isLaunchPeriod, isActive } });
   } catch (err) {
     logger.error(`getMySubscription — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
