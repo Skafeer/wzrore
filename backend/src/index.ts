@@ -44,11 +44,10 @@ app.use(cors({
 // ═══ Rate Limiting ═══
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 1000,
-  standardHeaders: true,
-  legacyHeaders: false,
+  max: 10000, // ✅ رفع مؤقت
   message: { success: false, message: 'طلبات كثيرة، حاول لاحقاً' },
 }));
+
 
 app.use('/api/auth', rateLimit({
   windowMs: 15 * 60 * 1000,
