@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/auth.store';
 import {
   LayoutDashboard, BookOpen, FileText, Users,
-  CreditCard, Flag, Shield, LogOut, GraduationCap, Bell,
+  CreditCard, Flag, Shield, LogOut, Bell, 
 } from 'lucide-react';
 
 const navItems = [
@@ -32,8 +32,13 @@ export default function Layout() {
         {/* Logo */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-              <GraduationCap className="text-white" size={22} />
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center overflow-hidden">
+              <img 
+                src="/android-icon-monochrome.png" 
+                alt="شعار صواب"
+                className="w-7 h-7 object-contain" 
+                style={{ filter: 'brightness(0) invert(1)' }} 
+              />
             </div>
             <div>
               <h1 className="text-lg font-bold text-gray-900">صواب</h1>

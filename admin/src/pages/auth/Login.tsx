@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth.store';
 import { adminLogin } from '../../services/auth.service';
-import { GraduationCap, Lock, Mail } from 'lucide-react';
+import { Lock, Mail } from 'lucide-react'; 
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
@@ -36,8 +36,13 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <GraduationCap className="text-white" size={32} />
+          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 overflow-hidden">
+            <img 
+              src="/android-icon-monochrome.png" 
+              alt="شعار صواب"
+              className="w-10 h-10 object-contain" 
+              style={{ filter: 'brightness(0) invert(1)' }}
+            />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">صواب</h1>
           <p className="text-gray-500 text-sm mt-1">لوحة إدارة المنصة</p>
