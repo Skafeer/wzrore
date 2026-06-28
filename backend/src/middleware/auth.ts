@@ -17,10 +17,7 @@ export async function authMiddleware(
       return;
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as {
-      id: string;
-      role: string;
-    };
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; role: string };
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
@@ -32,10 +29,23 @@ export async function authMiddleware(
       return;
     }
 
+    // ═══ تحقق من صلاحية الاشتراك ═══
+    const now = new Date();
+    const sub = user.subscription;
+    const isActiveSub = sub?.status === 'ACTIVE' && new Date(sub.endDate) > now;
+
+    // لو انتهى الاشتراك — حدّثه في الـ DB
+    if (sub?.status === 'ACTIVE' && new Date(sub.endDate) <= now) {
+      await prisma.subscription.update({
+        where: { userId: user.id },
+        data: { status: 'EXPIRED' },
+      });
+    }
+
     req.user = {
       id: user.id,
       role: user.role,
-      plan: user.subscription?.plan ?? null,
+      plan: isActiveSub ? sub!.plan : null,
     };
 
     next();
@@ -56,19 +66,14 @@ export async function adminMiddleware(
       return;
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as {
-      id: string;
-      role: string;
-    };
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; role: string };
 
     if (decoded.role !== 'ADMIN') {
       res.status(403).json({ success: false, message: 'ليس لديك صلاحية' });
       return;
     }
 
-    const admin = await prisma.admin.findUnique({
-      where: { id: decoded.id },
-    });
+    const admin = await prisma.admin.findUnique({ where: { id: decoded.id } });
 
     if (!admin) {
       res.status(401).json({ success: false, message: 'الأدمن غير موجود' });
@@ -101,10 +106,7 @@ export function superAdminMiddleware(
 
 export function requirePermission(page: string) {
   return (req: AdminRequest, res: Response, next: NextFunction): void => {
-    if (req.admin?.adminRole === 'SUPER_ADMIN') {
-      next();
-      return;
-    }
+    if (req.admin?.adminRole === 'SUPER_ADMIN') { next(); return; }
     if (!req.admin?.permissions[page]) {
       res.status(403).json({ success: false, message: 'ليس لديك صلاحية للوصول لهذه الصفحة' });
       return;
