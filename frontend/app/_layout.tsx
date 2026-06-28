@@ -6,6 +6,7 @@ import { useStoredAuth } from '../hooks/useStoredAuth';
 import { useAuthStore } from '../store/auth.store';
 import { useEffect } from 'react';
 import * as Updates from 'expo-updates';
+import * as Notifications from 'expo-notifications';
 import { useNotifications } from '../hooks/useNotifications';
 import {
   Tajawal_500Medium,
@@ -16,6 +17,17 @@ import { useFonts } from 'expo-font';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
 import { NetworkAlert } from '../components/NetworkAlert';
+
+// ═══ إعداد الإشعارات — صوت + تنبيه ═══
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 I18nManager.forceRTL(true);
 
