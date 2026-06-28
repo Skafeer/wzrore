@@ -7,8 +7,4 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
-  server: {
-    // @ts-ignore
-    historyApiFallback: true,
-  },
 })
