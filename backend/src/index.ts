@@ -13,7 +13,8 @@ import subscriptionRoutes from './routes/subscription.routes';
 import userRoutes from './routes/user.routes';
 import notificationRoutes from './routes/notification.routes';
 import { errorHandler, notFound } from './middleware/error';
-import { checkAndResetStreaks } from './utils/streakCron';
+import { checkAndResetStreaks, sendStreakReminders } from './utils/streakCron';
+import logger from './utils/logger';
 
 if (process.env.NODE_ENV !== 'production') {
   dotenv.config();
@@ -72,8 +73,14 @@ app.get('/', (req, res) => {
 // ═══ Cron Jobs ═══
 // كل منتصف ليل — تصفير الـ Streak
 cron.schedule('30 0 * * *', () => {
-  console.log('🔄 Running streak reset cron job...');
+  logger.info('Running streak reset cron job...');
   checkAndResetStreaks();
+});
+
+// كل يوم الساعة 8 مساءً — إشعارات تذكير
+cron.schedule('0 20 * * *', () => {
+  logger.info('Running streak reminder notifications...');
+  sendStreakReminders();
 });
 
 // ═══ Routes ═══
