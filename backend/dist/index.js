@@ -19,7 +19,6 @@ const notification_routes_1 = __importDefault(require("./routes/notification.rou
 const error_1 = require("./middleware/error");
 const streakCron_1 = require("./utils/streakCron");
 const logger_1 = __importDefault(require("./utils/logger"));
-const stats_routes_1 = __importDefault(require("./routes/stats.routes"));
 if (process.env.NODE_ENV !== 'production') {
     dotenv_1.default.config();
 }
@@ -54,7 +53,6 @@ app.use('/api/notifications/admin', (0, express_rate_limit_1.default)({
     max: 20,
     message: { success: false, message: 'حاول لاحقاً' },
 }));
-app.use('/api/stats', stats_routes_1.default);
 // ═══ Body Parser ═══
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true }));
