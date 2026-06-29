@@ -1,0 +1,392 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.startExam = startExam;
+exports.saveAnswer = saveAnswer;
+exports.submitExam = submitExam;
+exports.getResult = getResult;
+exports.getLastExam = getLastExam;
+exports.getPerformanceSummary = getPerformanceSummary;
+exports.adminGetUserSessions = adminGetUserSessions;
+const prisma_1 = require("../utils/prisma");
+const gemini_1 = require("../utils/gemini");
+const cloudinary_1 = require("../utils/cloudinary");
+const logger_1 = __importDefault(require("../utils/logger"));
+async function startExam(req, res) {
+    try {
+        const { examId } = req.body;
+        const userId = req.user.id;
+        if (!examId) {
+            res.status(400).json({ success: false, message: 'معرف الامتحان مطلوب' });
+            return;
+        }
+        const exam = await prisma_1.prisma.exam.findUnique({
+            where: { id: examId },
+            include: {
+                questions: {
+                    orderBy: { order: 'asc' },
+                    select: { id: true, text: true, degree: true, order: true, modelImages: true },
+                },
+            },
+        });
+        if (!exam) {
+            res.status(404).json({ success: false, message: 'الامتحان غير موجود' });
+            return;
+        }
+        const isLaunchPeriod = await checkLaunchPeriod();
+        const user = await prisma_1.prisma.user.findUnique({
+            where: { id: userId },
+            include: { subscription: true },
+        });
+        const hasPaidSub = user?.subscription?.status === 'ACTIVE' &&
+            new Date(user.subscription.endDate) > new Date();
+        if (!isLaunchPeriod && !hasPaidSub) {
+            const now = new Date();
+            const registrationDate = new Date(user.createdAt);
+            const dayOfRegistration = registrationDate.getDate();
+            let cycleStart = new Date(now.getFullYear(), now.getMonth(), dayOfRegistration);
+            if (cycleStart > now) {
+                cycleStart = new Date(now.getFullYear(), now.getMonth() - 1, dayOfRegistration);
+            }
+            const examCount = await prisma_1.prisma.examSession.count({
+                where: { userId, createdAt: { gte: cycleStart } },
+            });
+            if (examCount >= 5) {
+                const nextRenewal = new Date(now.getFullYear(), now.getMonth() + (cycleStart <= now ? 1 : 0), dayOfRegistration);
+                res.status(403).json({
+                    success: false,
+                    message: `وصلت للحد الأقصى للامتحانات المجانية (5 امتحانات). يتجدد العداد يوم ${nextRenewal.toLocaleDateString('ar-IQ')}`,
+                    requiresSubscription: true,
+                    nextRenewal: nextRenewal.toISOString(),
+                });
+                return;
+            }
+        }
+        // ═══ أغلق أي جلسة غير مكتملة لهذا المستخدم فوراً ═══
+        const closedCount = await prisma_1.prisma.examSession.updateMany({
+            where: { userId, isCompleted: false },
+            data: { isCompleted: true, submittedAt: new Date(), totalScore: 0 },
+        });
+        if (closedCount.count > 0) {
+            logger_1.default.info(`Closed ${closedCount.count} open session(s) for user ${userId} before starting new exam`);
+        }
+        // ═══ إنشاء جلسة جديدة ═══
+        const session = await prisma_1.prisma.examSession.create({
+            data: {
+                userId, examId, totalScore: 0,
+                maxScore: exam.questions.reduce((sum, q) => sum + q.degree, 0),
+            },
+        });
+        await updateStudyStreak(userId);
+        res.status(201).json({
+            success: true,
+            data: {
+                sessionId: session.id,
+                exam: { id: exam.id, title: exam.title, duration: exam.duration, questions: exam.questions },
+            },
+        });
+    }
+    catch (err) {
+        logger_1.default.error(`startExam — ${err.message}`, { stack: err.stack });
+        res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
+    }
+}
+async function saveAnswer(req, res) {
+    try {
+        const { sessionId } = req.params;
+        const { questionId, answerText } = req.body;
+        const userId = req.user.id;
+        const session = await prisma_1.prisma.examSession.findUnique({ where: { id: sessionId } });
+        if (!session || session.userId !== userId) {
+            res.status(403).json({ success: false, message: 'غير مصرح' });
+            return;
+        }
+        if (session.isCompleted) {
+            res.status(400).json({ success: false, message: 'الامتحان مسلّم بالفعل' });
+            return;
+        }
+        const answerImages = [];
+        if (req.files && Array.isArray(req.files)) {
+            const hasPaidSub = req.user.plan !== null;
+            const maxImages = hasPaidSub ? 3 : 1;
+            const filesToUpload = req.files.slice(0, maxImages);
+            for (const file of filesToUpload) {
+                const url = await (0, cloudinary_1.uploadImage)(file.buffer, 'answers');
+                answerImages.push(url);
+            }
+        }
+        const answer = await prisma_1.prisma.studentAnswer.upsert({
+            where: { sessionId_questionId: { sessionId, questionId } },
+            update: { answerText, answerImages },
+            create: { sessionId, questionId, answerText, answerImages },
+        });
+        res.json({ success: true, data: answer });
+    }
+    catch (err) {
+        logger_1.default.error(`saveAnswer — ${err.message}`, { stack: err.stack });
+        res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
+    }
+}
+async function submitExam(req, res) {
+    try {
+        const { sessionId } = req.params;
+        const userId = req.user.id;
+        const session = await prisma_1.prisma.examSession.findUnique({
+            where: { id: sessionId },
+            include: {
+                exam: { include: { questions: { orderBy: { order: 'asc' } } } },
+                studentAnswers: true,
+            },
+        });
+        if (!session || session.userId !== userId) {
+            res.status(403).json({ success: false, message: 'غير مصرح' });
+            return;
+        }
+        if (session.isCompleted) {
+            res.status(400).json({ success: false, message: 'الامتحان مسلّم بالفعل' });
+            return;
+        }
+        const questionsInput = session.exam.questions.map(question => {
+            const studentAnswer = session.studentAnswers.find(a => a.questionId === question.id);
+            return {
+                questionId: question.id,
+                questionText: question.text,
+                modelAnswer: question.modelAnswer,
+                studentAnswer: studentAnswer?.answerText ?? '',
+                degree: question.degree,
+                aiNotes: question.aiNotes,
+                modelImages: question.modelImages,
+                studentImages: studentAnswer?.answerImages ?? [],
+            };
+        });
+        const gradingResults = await (0, gemini_1.gradeExam)(questionsInput);
+        let totalScore = 0;
+        for (const result of gradingResults) {
+            totalScore += result.score;
+            const questionInput = questionsInput.find(q => q.questionId === result.questionId);
+            await prisma_1.prisma.studentAnswer.upsert({
+                where: { sessionId_questionId: { sessionId, questionId: result.questionId } },
+                update: { aiScore: result.score, aiFeedback: result.feedback },
+                create: {
+                    sessionId,
+                    questionId: result.questionId,
+                    answerText: questionInput?.studentAnswer ?? '',
+                    answerImages: questionInput?.studentImages ?? [],
+                    aiScore: result.score,
+                    aiFeedback: result.feedback,
+                },
+            });
+        }
+        const updatedSession = await prisma_1.prisma.examSession.update({
+            where: { id: sessionId },
+            data: { isCompleted: true, submittedAt: new Date(), totalScore },
+        });
+        const streakResult = await updateStudyStreak(userId);
+        res.json({
+            success: true,
+            data: {
+                sessionId, totalScore, maxScore: updatedSession.maxScore,
+                gradingResults: gradingResults.map(r => ({
+                    questionId: r.questionId,
+                    score: r.score,
+                    feedback: r.feedback,
+                })),
+                streak: {
+                    current: streakResult.newStreak, best: streakResult.bestStreak,
+                    isNewBest: streakResult.isNewBest, alreadyCompletedToday: streakResult.alreadyCompletedToday,
+                },
+            },
+        });
+    }
+    catch (err) {
+        logger_1.default.error(`submitExam — ${err.message}`, { stack: err.stack });
+        res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
+    }
+}
+async function getResult(req, res) {
+    try {
+        const { sessionId } = req.params;
+        const userId = req.user.id;
+        const session = await prisma_1.prisma.examSession.findUnique({
+            where: { id: sessionId },
+            include: {
+                exam: {
+                    include: {
+                        subject: { select: { name: true } },
+                        chapter: { select: { name: true } },
+                        topic: { select: { name: true } },
+                        questions: { orderBy: { order: 'asc' } },
+                    },
+                },
+                studentAnswers: true,
+            },
+        });
+        if (!session || session.userId !== userId) {
+            res.status(403).json({ success: false, message: 'غير مصرح' });
+            return;
+        }
+        if (!session.isCompleted) {
+            res.status(400).json({ success: false, message: 'الامتحان لم يُسلَّم بعد' });
+            return;
+        }
+        const questionsDetail = session.exam.questions.map(q => {
+            const answer = session.studentAnswers.find(a => a.questionId === q.id);
+            return {
+                questionId: q.id, questionText: q.text,
+                modelAnswer: q.modelAnswer, modelImages: q.modelImages, degree: q.degree,
+                studentAnswer: answer?.answerText ?? '', studentImages: answer?.answerImages ?? [],
+                aiScore: answer?.aiScore ?? 0, aiFeedback: answer?.aiFeedback ?? '',
+            };
+        });
+        res.json({
+            success: true,
+            data: {
+                sessionId, examTitle: session.exam.title, subject: session.exam.subject.name,
+                totalScore: session.totalScore, maxScore: session.maxScore,
+                submittedAt: session.submittedAt, questions: questionsDetail,
+            },
+        });
+    }
+    catch (err) {
+        logger_1.default.error(`getResult — ${err.message}`, { stack: err.stack });
+        res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
+    }
+}
+async function getLastExam(req, res) {
+    try {
+        const userId = req.user.id;
+        const session = await prisma_1.prisma.examSession.findFirst({
+            where: { userId, isCompleted: true },
+            orderBy: { submittedAt: 'desc' },
+            include: {
+                exam: {
+                    include: {
+                        subject: { select: { name: true } },
+                        chapter: { select: { name: true } },
+                    },
+                },
+            },
+        });
+        if (!session) {
+            res.json({ success: true, data: null });
+            return;
+        }
+        res.json({
+            success: true,
+            data: {
+                sessionId: session.id, subject: session.exam.subject.name,
+                chapter: session.exam.chapter?.name ?? null, examTitle: session.exam.title,
+                totalScore: session.totalScore, maxScore: session.maxScore, submittedAt: session.submittedAt,
+            },
+        });
+    }
+    catch (err) {
+        logger_1.default.error(`getLastExam — ${err.message}`, { stack: err.stack });
+        res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
+    }
+}
+async function getPerformanceSummary(req, res) {
+    try {
+        const userId = req.user.id;
+        const sessions = await prisma_1.prisma.examSession.findMany({
+            where: { userId, isCompleted: true },
+            select: { totalScore: true, maxScore: true },
+        });
+        const totalExams = sessions.length;
+        const avgScore = totalExams > 0
+            ? sessions.reduce((sum, s) => {
+                const pct = s.maxScore && s.maxScore > 0 ? (s.totalScore ?? 0) / s.maxScore * 100 : 0;
+                return sum + pct;
+            }, 0) / totalExams
+            : 0;
+        res.json({
+            success: true,
+            data: { totalExams, avgScore: Math.round(avgScore * 10) / 10 },
+        });
+    }
+    catch (err) {
+        logger_1.default.error(`getPerformanceSummary — ${err.message}`, { stack: err.stack });
+        res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
+    }
+}
+async function adminGetUserSessions(req, res) {
+    try {
+        const { id } = req.params;
+        const sessions = await prisma_1.prisma.examSession.findMany({
+            where: { userId: id, isCompleted: true },
+            orderBy: { submittedAt: 'desc' },
+            include: {
+                exam: {
+                    include: {
+                        subject: { select: { name: true } },
+                        chapter: { select: { name: true } },
+                    },
+                },
+            },
+        });
+        const user = await prisma_1.prisma.user.findUnique({
+            where: { id },
+            select: { name: true, phone: true },
+        });
+        res.json({
+            success: true,
+            data: {
+                user,
+                sessions: sessions.map(s => ({
+                    sessionId: s.id, examTitle: s.exam.title,
+                    subject: s.exam.subject.name, chapter: s.exam.chapter?.name ?? null,
+                    totalScore: s.totalScore, maxScore: s.maxScore, submittedAt: s.submittedAt,
+                })),
+            },
+        });
+    }
+    catch (err) {
+        logger_1.default.error(`adminGetUserSessions — ${err.message}`, { stack: err.stack });
+        res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
+    }
+}
+// ═══ HELPER ═══
+async function checkLaunchPeriod() {
+    const now = new Date();
+    const launch = await prisma_1.prisma.launchPeriod.findFirst({
+        where: { isActive: true, startDate: { lte: now }, endDate: { gte: now } },
+    });
+    return !!launch;
+}
+async function updateStudyStreak(userId) {
+    const user = await prisma_1.prisma.user.findUnique({ where: { id: userId } });
+    if (!user)
+        return { newStreak: 0, bestStreak: 0, isNewBest: false, alreadyCompletedToday: false };
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const lastStudy = user.lastStudyDate
+        ? new Date(user.lastStudyDate.getFullYear(), user.lastStudyDate.getMonth(), user.lastStudyDate.getDate())
+        : null;
+    if (lastStudy && lastStudy.getTime() === today.getTime()) {
+        return { newStreak: user.studyStreak, bestStreak: user.bestStreak, isNewBest: false, alreadyCompletedToday: true };
+    }
+    let newStreak = 1;
+    if (lastStudy) {
+        const diffDays = Math.floor((today.getTime() - lastStudy.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays === 1) {
+            newStreak = user.studyStreak + 1;
+        }
+        else if (diffDays === 2 && user.streakFreeze > 0) {
+            newStreak = user.studyStreak + 1;
+            await prisma_1.prisma.user.update({ where: { id: userId }, data: { streakFreeze: user.streakFreeze - 1 } });
+        }
+        else if (diffDays > 1) {
+            newStreak = 1;
+        }
+    }
+    const newBestStreak = Math.max(newStreak, user.bestStreak);
+    const isNewBest = newStreak > user.bestStreak;
+    await prisma_1.prisma.user.update({
+        where: { id: userId },
+        data: { studyStreak: newStreak, bestStreak: newBestStreak, lastStudyDate: now },
+    });
+    return { newStreak, bestStreak: newBestStreak, isNewBest, alreadyCompletedToday: false };
+}
+//# sourceMappingURL=session.controller.js.map

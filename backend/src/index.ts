@@ -15,6 +15,7 @@ import notificationRoutes from './routes/notification.routes';
 import { errorHandler, notFound } from './middleware/error';
 import { checkAndResetStreaks, sendStreakReminders } from './utils/streakCron';
 import logger from './utils/logger';
+import statsRoutes from './routes/stats.routes';
 
 if (process.env.NODE_ENV !== 'production') {
   dotenv.config();
@@ -57,6 +58,8 @@ app.use('/api/notifications/admin', rateLimit({
   message: { success: false, message: 'حاول لاحقاً' },
 }));
 
+
+app.use('/api/stats', statsRoutes);
 // ═══ Body Parser ═══
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
