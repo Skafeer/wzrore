@@ -8,6 +8,7 @@ import {
 
 const router = Router();
 
+
 // Student routes
 router.get('/', authMiddleware, getExams);
 router.get('/:subjectId/years', authMiddleware, getAvailableYears);
