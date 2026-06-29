@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import api from '../../utils/api';
 import {
-  Users, FileText, BookOpen, CreditCard, Flag, CheckCircle,
+  Users, BookOpen, Flag,
   TrendingUp, Clock, Trophy, AlertTriangle, DollarSign, BarChart2,
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, BarChart, Bar, Cell,
+  ResponsiveContainer,
 } from 'recharts';
 
 const PROVINCE_COLORS = [
@@ -209,7 +209,7 @@ export default function DashboardPage() {
             <p className="text-gray-400 text-center py-6">لا توجد بيانات</p>
           ) : (
             <div className="space-y-3">
-              {s?.topSubjects?.map((item: any, i: number) => (
+              {s?.topSubjects?.map((item: any) => (
                 <div key={item.examId}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-gray-700 font-medium truncate">{item.subject} — {item.title}</span>
