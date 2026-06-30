@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'; // ✅ HashRouter
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/auth.store';
 import LoginPage from './pages/auth/Login';
@@ -21,7 +21,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <HashRouter>  {/* ✅ استخدم HashRouter بدلاً من BrowserRouter */}
+    <HashRouter>
       <Toaster position="top-center" />
       <Routes>
         <Route path="/login" element={<LoginPage />} />

@@ -109,6 +109,6 @@ export async function getPerformance(): Promise<PerformanceSummary> {
   return res.data.data;
 }
 
-export async function createReport(questionId: string, message: string): Promise<void> {
-  await api.post('/users/reports', { questionId, message });
+export async function createReport(questionId: string, message: string, category: string = 'OTHER'): Promise<void> {
+  await api.post('/reports', { questionId, message, category });
 }

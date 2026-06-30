@@ -10,6 +10,13 @@ import { Colors } from '../../constants/colors';
 import { createReport } from '../../services/exam.service';
 import CustomAlert, { CustomAlertRef } from '../../components/CustomAlert';
 
+const CATEGORIES = [
+  { key: 'SPELLING', label: 'خطأ إملائي', icon: 'text-outline' },
+  { key: 'WRONG_ANSWER', label: 'خطأ في الإجابة', icon: 'close-circle-outline' },
+  { key: 'UNCLEAR', label: 'سؤال غير واضح', icon: 'help-circle-outline' },
+  { key: 'OTHER', label: 'أخرى', icon: 'ellipsis-horizontal-circle-outline' },
+] as const;
+
 export default function ReportScreen() {
   const { questionId } = useLocalSearchParams<{ questionId: string }>();
   const { rs, hp, wp, isTablet, contentWidth } = useResponsive();
@@ -17,6 +24,7 @@ export default function ReportScreen() {
   const customAlertRef = useRef<CustomAlertRef>(null);
 
   const [message, setMessage] = useState('');
+  const [category, setCategory] = useState<string>('OTHER');
   const [loading, setLoading] = useState(false);
 
   async function onSubmit() {
@@ -30,7 +38,7 @@ export default function ReportScreen() {
     }
     setLoading(true);
     try {
-      await createReport(questionId!, message);
+      await createReport(questionId!, message, category);
       customAlertRef.current?.show({
         title: 'تم',
         message: 'تم إرسال البلاغ بنجاح',
@@ -59,6 +67,41 @@ export default function ReportScreen() {
         </TouchableOpacity>
         <Text style={[styles.title, { fontSize: rs(18) }]}>أبلاغ عن مشكلة</Text>
         <View style={{ width: rs(24) }} />
+      </View>
+
+      {/* Category Selection */}
+      <Text style={[styles.label, { fontSize: rs(14) }]}>نوع المشكلة</Text>
+      <View style={[styles.categoryGrid, { marginBottom: rs(20), gap: rs(10) }]}>
+        {CATEGORIES.map((cat) => (
+          <TouchableOpacity
+            key={cat.key}
+            onPress={() => setCategory(cat.key)}
+            style={[
+              styles.categoryCard,
+              {
+                padding: rs(14),
+                borderRadius: rs(12),
+                width: '47%',
+              },
+              category === cat.key && styles.categoryCardActive,
+            ]}
+          >
+            <Ionicons
+              name={cat.icon as never}
+              size={rs(22)}
+              color={category === cat.key ? Colors.white : Colors.primary}
+            />
+            <Text
+              style={[
+                styles.categoryText,
+                { fontSize: rs(12), marginTop: rs(6) },
+                category === cat.key && styles.categoryTextActive,
+              ]}
+            >
+              {cat.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Input Field with Icon */}
@@ -99,6 +142,27 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { color: Colors.text.primary, fontFamily: 'Tajawal_800ExtraBold' },
   label: { color: Colors.text.secondary, fontFamily: 'Tajawal_700Bold', marginBottom: 8 },
+
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  categoryCard: {
+    backgroundColor: Colors.white,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    alignItems: 'center',
+  },
+  categoryCardActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  categoryText: {
+    color: Colors.text.primary,
+    fontFamily: 'Tajawal_700Bold',
+    textAlign: 'center',
+  },
+  categoryTextActive: {
+    color: Colors.white,
+  },
+
   inputContainer: { backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border },
   iconWrapper: { backgroundColor: Colors.primarySoft, justifyContent: 'center', alignItems: 'center' },
   input: { fontFamily: 'Tajawal_500Medium' },
