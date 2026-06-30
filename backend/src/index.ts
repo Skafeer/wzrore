@@ -13,6 +13,7 @@ import subscriptionRoutes from './routes/subscription.routes';
 import userRoutes from './routes/user.routes';
 import notificationRoutes from './routes/notification.routes';
 import statsRoutes from './routes/stats.routes';
+import reportRoutes from './routes/report.routes';
 import { errorHandler, notFound } from './middleware/error';
 import { checkAndResetStreaks, sendStreakReminders } from './utils/streakCron';
 import logger from './utils/logger';
@@ -95,6 +96,7 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/reports', reportRoutes);
 // ═══ Error Handling ═══
 app.use(notFound);
 app.use(errorHandler);
