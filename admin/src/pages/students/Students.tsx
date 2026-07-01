@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // ✅ استيراد useNavigate
+import { useNavigate } from 'react-router-dom';
 import { getUsers, deleteUser, activateSubscription } from '../../services/user.service';
 import api from '../../utils/api';
 import type { User } from '../../types';
-import { Search, Trash2, CreditCard, Users, ChevronRight, ChevronLeft, Pencil, XCircle } from 'lucide-react';
+import { Search, Trash2, CreditCard, Users, ChevronRight, ChevronLeft, Pencil, XCircle, PlusCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const PROVINCES = [
@@ -13,8 +13,10 @@ const PROVINCES = [
   'كركوك', 'السليمانية', 'دهوك',
 ];
 
+const QUICK_EXTEND_DAYS = [7, 14, 30, 90, 365];
+
 export default function StudentsPage() {
-  const navigate = useNavigate(); // ✅ تعريف دالة التنقل
+  const navigate = useNavigate();
 
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +29,8 @@ export default function StudentsPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedPlan, setSelectedPlan] = useState('MONTHLY');
+  const [customDays, setCustomDays] = useState('');
+  const [extending, setExtending] = useState(false);
 
   const [editForm, setEditForm] = useState({
     name: '', phone: '', province: '', password: '',
@@ -105,6 +109,24 @@ export default function StudentsPage() {
     }
   }
 
+  async function handleExtendSub(days: number) {
+    if (!selectedUser) return;
+    setExtending(true);
+    try {
+      const res = await api.put(`/subscriptions/admin/extend/${selectedUser.id}`, { days });
+      await loadUsers();
+      toast.success(res.data.message ?? `تم تمديد الاشتراك ${days} يوم`);
+      setCustomDays('');
+      // تحديث المستخدم المحدد
+      const updatedRes = await getUsers({ search: selectedUser.phone, page: 1, limit: 1 });
+      if (updatedRes.data[0]) setSelectedUser(updatedRes.data[0]);
+    } catch {
+      toast.error('حدث خطأ في تمديد الاشتراك');
+    } finally {
+      setExtending(false);
+    }
+  }
+
   const planLabel = (plan?: string) => {
     if (plan === 'WEEKLY') return 'أسبوعي';
     if (plan === 'MONTHLY') return 'شهري';
@@ -178,7 +200,6 @@ export default function StudentsPage() {
                         <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                           <span className="text-blue-600 font-bold text-xs">{user.name.charAt(0)}</span>
                         </div>
-                        {/* ✅ تم تحويل الاسم إلى زر قابل للنقر */}
                         <button
                           onClick={() => navigate(`/students/${user.id}/sessions`)}
                           className="font-medium text-gray-900 hover:text-blue-600 hover:underline transition-colors"
@@ -190,15 +211,22 @@ export default function StudentsPage() {
                     <td className="px-6 py-4 text-gray-600">{user.phone}</td>
                     <td className="px-6 py-4 text-gray-600">{user.province}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        user.subscription?.status === 'ACTIVE'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-500'
-                      }`}>
-                        {user.subscription?.status === 'ACTIVE'
-                          ? planLabel(user.subscription.plan)
-                          : 'مجاني'}
-                      </span>
+                      <div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          user.subscription?.status === 'ACTIVE'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {user.subscription?.status === 'ACTIVE'
+                            ? planLabel(user.subscription.plan)
+                            : 'مجاني'}
+                        </span>
+                        {user.subscription?.status === 'ACTIVE' && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            ينتهي {new Date(user.subscription.endDate).toLocaleDateString('ar-IQ')}
+                          </p>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-gray-600">{user.examCount ?? 0}</td>
                     <td className="px-6 py-4 text-gray-500">
@@ -266,33 +294,25 @@ export default function StudentsPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">الاسم</label>
-                <input
-                  type="text"
-                  value={editForm.name}
+                <input type="text" value={editForm.name}
                   onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
                   className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">رقم الهاتف</label>
-                <input
-                  type="text"
-                  value={editForm.phone}
+                <input type="text" value={editForm.phone} maxLength={11}
                   onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))}
-                  maxLength={11}
                   className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">المحافظة</label>
-                <select
-                  value={editForm.province}
+                <select value={editForm.province}
                   onChange={e => setEditForm(p => ({ ...p, province: e.target.value }))}
                   className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {PROVINCES.map(p => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
+                  {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
               <div>
@@ -300,11 +320,8 @@ export default function StudentsPage() {
                   كلمة المرور الجديدة
                   <span className="text-gray-400 text-xs mr-1">(اتركها فارغة إذا لا تريد تغييرها)</span>
                 </label>
-                <input
-                  type="password"
-                  value={editForm.password}
+                <input type="password" value={editForm.password} placeholder="••••••••"
                   onChange={e => setEditForm(p => ({ ...p, password: e.target.value }))}
-                  placeholder="••••••••"
                   className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -320,49 +337,90 @@ export default function StudentsPage() {
       {/* Subscription Modal */}
       {showSubModal && selectedUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-1">
               <h2 className="text-lg font-bold text-gray-900">إدارة الاشتراك</h2>
               {selectedUser.subscription?.status === 'ACTIVE' && (
-                <button
-                  onClick={handleCancelSub}
-                  className="flex items-center gap-1 text-sm text-red-600 hover:text-red-700 font-medium"
-                >
-                  <XCircle size={16} />
-                  إلغاء الاشتراك
+                <button onClick={handleCancelSub}
+                  className="flex items-center gap-1 text-sm text-red-600 hover:text-red-700 font-medium">
+                  <XCircle size={16} /> إلغاء الاشتراك
                 </button>
               )}
             </div>
             <p className="text-sm text-gray-500 mb-4">{selectedUser.name}</p>
 
-            {selectedUser.subscription?.status === 'ACTIVE' && (
+            {/* حالة الاشتراك الحالية */}
+            {selectedUser.subscription?.status === 'ACTIVE' ? (
               <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-4 text-sm text-green-700">
-                مشترك حالياً — {planLabel(selectedUser.subscription.plan)} — ينتهي {new Date(selectedUser.subscription.endDate).toLocaleDateString('ar-IQ')}
+                <p className="font-medium">مشترك حالياً — {planLabel(selectedUser.subscription.plan)}</p>
+                <p className="text-xs mt-1">ينتهي {new Date(selectedUser.subscription.endDate).toLocaleDateString('ar-IQ')}</p>
+              </div>
+            ) : (
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4 text-sm text-gray-500">
+                حساب مجاني — لا يوجد اشتراك نشط
               </div>
             )}
 
-            <p className="text-sm font-medium text-gray-700 mb-3">تفعيل اشتراك جديد:</p>
-            <div className="space-y-3 mb-6">
-              {[
-                { key: 'WEEKLY', label: 'أسبوعي', sub: '7 أيام — 2,000 د.ع' },
-                { key: 'MONTHLY', label: 'شهري', sub: '30 يوم — 5,000 د.ع' },
-                { key: 'YEARLY', label: 'سنوي ⭐', sub: 'سنة كاملة — 10,000 د.ع' },
-              ].map(plan => (
-                <button
-                  key={plan.key}
-                  onClick={() => setSelectedPlan(plan.key)}
-                  className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-colors ${
-                    selectedPlan === plan.key ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <span className="font-medium text-gray-900">{plan.label}</span>
-                  <span className="text-sm text-gray-500">{plan.sub}</span>
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-3">
-              <button onClick={handleActivateSub} className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl font-medium hover:bg-blue-700">تفعيل</button>
-              <button onClick={() => setShowSubModal(false)} className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-medium hover:bg-gray-200">إغلاق</button>
+            {/* ═══ تمديد سريع ═══ */}
+            {selectedUser.subscription && (
+              <div className="mb-5">
+                <p className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+                  <PlusCircle size={16} className="text-blue-600" />
+                  تمديد الاشتراك الحالي
+                </p>
+                <div className="flex gap-2 flex-wrap mb-3">
+                  {QUICK_EXTEND_DAYS.map(days => (
+                    <button key={days}
+                      onClick={() => handleExtendSub(days)}
+                      disabled={extending}
+                      className="px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors disabled:opacity-50"
+                    >
+                      {days === 365 ? 'سنة' : days === 90 ? '3 أشهر' : days === 30 ? 'شهر' : days === 14 ? 'أسبوعين' : 'أسبوع'}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={customDays}
+                    onChange={e => setCustomDays(e.target.value)}
+                    placeholder="عدد أيام مخصص..."
+                    min="1"
+                    className="flex-1 border border-gray-300 rounded-xl px-3 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={() => customDays && handleExtendSub(parseInt(customDays))}
+                    disabled={!customDays || extending}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {extending ? '...' : 'تمديد'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="border-t border-gray-100 pt-4">
+              <p className="text-sm font-medium text-gray-700 mb-3">تفعيل اشتراك جديد:</p>
+              <div className="space-y-3 mb-4">
+                {[
+                  { key: 'WEEKLY', label: 'أسبوعي', sub: '7 أيام — 2,000 د.ع' },
+                  { key: 'MONTHLY', label: 'شهري', sub: '30 يوم — 5,000 د.ع' },
+                  { key: 'YEARLY', label: 'سنوي ⭐', sub: 'سنة كاملة — 10,000 د.ع' },
+                ].map(plan => (
+                  <button key={plan.key} onClick={() => setSelectedPlan(plan.key)}
+                    className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-colors ${
+                      selectedPlan === plan.key ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="font-medium text-gray-900">{plan.label}</span>
+                    <span className="text-sm text-gray-500">{plan.sub}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-3">
+                <button onClick={handleActivateSub} className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl font-medium hover:bg-blue-700">تفعيل</button>
+                <button onClick={() => setShowSubModal(false)} className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-medium hover:bg-gray-200">إغلاق</button>
+              </div>
             </div>
           </div>
         </div>
