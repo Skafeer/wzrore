@@ -3,10 +3,9 @@ import { authMiddleware, adminMiddleware, requirePermission } from '../middlewar
 import {
   redeemCode, getMySubscription,
   adminGetCodes, adminCreateCodes, adminDeleteCode,
-  adminActivateSubscription, adminCancelSubscription,
+  adminActivateSubscription, adminExtendSubscription, adminCancelSubscription,
   adminGetLaunchPeriod, adminSetLaunchPeriod,
 } from '../controllers/subscription.controller';
-
 const router = Router();
 
 // Student
@@ -21,5 +20,6 @@ router.post('/admin/activate', adminMiddleware, requirePermission('subscriptions
 router.put('/admin/cancel/:userId', adminMiddleware, requirePermission('subscriptions'), adminCancelSubscription);
 router.get('/admin/launch', adminMiddleware, requirePermission('subscriptions'), adminGetLaunchPeriod);
 router.post('/admin/launch', adminMiddleware, requirePermission('subscriptions'), adminSetLaunchPeriod);
+router.put('/admin/extend/:userId', adminMiddleware, requirePermission('subscriptions'), adminExtendSubscription);
 
 export default router;

@@ -9,7 +9,6 @@ function hashCode(code: string): string {
     .update(code.trim().toUpperCase()).digest('hex');
 }
 
-// ═══ helper مشترك لتحقق الاشتراك وتحديثه ═══
 async function resolveSubscription(userId: string) {
   const now = new Date();
   const subscription = await prisma.subscription.findUnique({ where: { userId } });
@@ -151,6 +150,45 @@ export async function adminCancelSubscription(req: Request, res: Response): Prom
     res.json({ success: true, message: 'تم إلغاء الاشتراك' });
   } catch (err) {
     logger.error(`adminCancelSubscription — ${(err as Error).message}`, { stack: (err as Error).stack });
+    res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
+  }
+}
+
+export async function adminExtendSubscription(req: Request, res: Response): Promise<void> {
+  try {
+    const { userId } = req.params as { userId: string };
+    const { days } = req.body;
+
+    if (!days || parseInt(days) <= 0) {
+      res.status(400).json({ success: false, message: 'عدد الأيام مطلوب' });
+      return;
+    }
+
+    const subscription = await prisma.subscription.findUnique({ where: { userId } });
+
+    if (!subscription) {
+      res.status(404).json({ success: false, message: 'لا يوجد اشتراك لهذا المستخدم' });
+      return;
+    }
+
+    // التمديد من تاريخ الانتهاء الحالي أو من الآن إذا انتهى
+    const now = new Date();
+    const baseDate = subscription.endDate > now ? subscription.endDate : now;
+    const newEndDate = new Date(baseDate);
+    newEndDate.setDate(newEndDate.getDate() + parseInt(days));
+
+    const updated = await prisma.subscription.update({
+      where: { userId },
+      data: { status: 'ACTIVE', endDate: newEndDate },
+    });
+
+    res.json({
+      success: true,
+      message: `تم تمديد الاشتراك ${days} يوم حتى ${newEndDate.toLocaleDateString('ar-IQ')}`,
+      data: updated,
+    });
+  } catch (err) {
+    logger.error(`adminExtendSubscription — ${(err as Error).message}`, { stack: (err as Error).stack });
     res.status(500).json({ success: false, message: 'حدث خطأ في الخادم' });
   }
 }
