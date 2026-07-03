@@ -1,63 +1,77 @@
 import { useEffect, useState } from 'react';
 import api from '../../utils/api';
-import { Bell, Send, Users, User, Clock } from 'lucide-react';
+import { Bell, Send, Users, CreditCard, MapPin, Clock, History } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-interface Notification {
-  id: string;
-  title: string;
-  body: string;
-  sentBy: string;
-  sentAt: string;
-  totalSent: number;
-}
+const PROVINCES = [
+  'بغداد', 'البصرة', 'نينوى', 'أربيل', 'النجف',
+  'كربلاء', 'الأنبار', 'ديالى', 'صلاح الدين', 'بابل',
+  'واسط', 'ميسان', 'ذي قار', 'المثنى', 'القادسية',
+  'كركوك', 'السليمانية', 'دهوك',
+];
 
-interface Student {
-  id: string;
-  name: string;
-  phone: string;
-}
+type SendTarget = 'all' | 'subscribed' | 'province';
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [target, setTarget] = useState<SendTarget>('all');
+  const [province, setProvince] = useState('بغداد');
+  const [scheduledAt, setScheduledAt] = useState('');
+  const [isScheduled, setIsScheduled] = useState(false);
   const [sending, setSending] = useState(false);
-  const [tab, setTab] = useState<'all' | 'single'>('all');
-  const [students, setStudents] = useState<Student[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState('');
-  const [studentSearch, setStudentSearch] = useState('');
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
 
-  const [form, setForm] = useState({ title: '', body: '' });
+  useEffect(() => { loadHistory(); }, []);
 
-  useEffect(() => { loadData(); }, []);
-
-  async function loadData() {
-    setLoading(true);
+  async function loadHistory() {
+    setLoadingHistory(true);
     try {
-      const [notifRes, studentsRes] = await Promise.all([
-        api.get('/notifications/admin/history'),
-        api.get('/users/admin/users?limit=100'),
-      ]);
-      setNotifications(notifRes.data.data);
-      setStudents(studentsRes.data.data);
+      const res = await api.get('/notifications/admin/history');
+      setHistory(res.data.data);
     } finally {
-      setLoading(false);
+      setLoadingHistory(false);
     }
   }
 
-  async function handleSendToAll() {
-    if (!form.title || !form.body) {
+  async function handleSend() {
+    if (!title.trim() || !body.trim()) {
       toast.error('العنوان والنص مطلوبان');
       return;
     }
-    if (!confirm(`هل أنت متأكد من إرسال الإشعار لجميع الطلاب؟`)) return;
+
+    if (isScheduled && !scheduledAt) {
+      toast.error('حدد وقت الجدولة');
+      return;
+    }
 
     setSending(true);
     try {
-      const res = await api.post('/notifications/admin/send-to-all', form);
-      toast.success(res.data.message);
-      setForm({ title: '', body: '' });
-      await loadData();
+      if (isScheduled) {
+        // جدولة
+        await api.post('/notifications/admin/schedule', {
+          title, body, scheduledAt,
+          target,
+          province: target === 'province' ? province : undefined,
+        });
+        toast.success('تمت جدولة الإشعار بنجاح');
+      } else if (target === 'all') {
+        await api.post('/notifications/admin/all', { title, body });
+        toast.success('تم إرسال الإشعار لجميع الطلاب');
+      } else if (target === 'subscribed') {
+        await api.post('/notifications/admin/send-to-subscribed', { title, body });
+        toast.success('تم إرسال الإشعار للمشتركين');
+      } else if (target === 'province') {
+        await api.post('/notifications/admin/send-to-province', { title, body, province });
+        toast.success(`تم إرسال الإشعار لطلاب ${province}`);
+      }
+
+      setTitle('');
+      setBody('');
+      setScheduledAt('');
+      setIsScheduled(false);
+      await loadHistory();
     } catch {
       toast.error('حدث خطأ في الإرسال');
     } finally {
@@ -65,192 +79,179 @@ export default function NotificationsPage() {
     }
   }
 
-  async function handleSendToUser() {
-    if (!form.title || !form.body || !selectedStudent) {
-      toast.error('اختر طالباً وأدخل العنوان والنص');
-      return;
-    }
-
-    setSending(true);
-    try {
-      const res = await api.post('/notifications/admin/send-to-user', {
-        userId: selectedStudent,
-        ...form,
-      });
-      toast.success(res.data.message);
-      setForm({ title: '', body: '' });
-      setSelectedStudent('');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message ?? 'حدث خطأ في الإرسال');
-    } finally {
-      setSending(false);
-    }
-  }
-
-  const filteredStudents = students.filter(s =>
-    s.name.includes(studentSearch) || s.phone.includes(studentSearch)
-  );
-
-  const quickMessages = [
-    { title: '🔥 تذكير الدراسة', body: 'لا تخسر سلسلة دراستك! أكمل امتحاناً اليوم.' },
-    { title: '📘 امتحانات جديدة', body: 'تم إضافة امتحانات وزارية جديدة. ابدأ الآن!' },
-    { title: '⭐ عرض خاص', body: 'اشترك الآن واستثمر وقتك في المراجعة.' },
-  ];
-
   return (
     <div className="p-6" dir="rtl">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">الإشعارات</h1>
-          <p className="text-sm text-gray-500">إرسال إشعارات للطلاب</p>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">الإشعارات</h1>
+        <p className="text-sm text-gray-500 mt-1">إرسال إشعارات للطلاب</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Send Section */}
-        <div className="space-y-4">
-          {/* Tabs */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setTab('all')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                tab === 'all' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
-              }`}
-            >
-              <Users size={16} />
-              لجميع الطلاب
-            </button>
-            <button
-              onClick={() => setTab('single')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                tab === 'single' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'
-              }`}
-            >
-              <User size={16} />
-              طالب محدد
-            </button>
+
+        {/* Send Form */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <h2 className="text-lg font-bold text-gray-900 mb-5 flex items-center gap-2">
+            <Send size={20} className="text-blue-600" />
+            إرسال إشعار جديد
+          </h2>
+
+          {/* Target Selection */}
+          <p className="text-sm font-medium text-gray-700 mb-3">إرسال إلى</p>
+          <div className="grid grid-cols-3 gap-2 mb-5">
+            {[
+              { value: 'all', label: 'الجميع', icon: Users },
+              { value: 'subscribed', label: 'المشتركون', icon: CreditCard },
+              { value: 'province', label: 'محافظة', icon: MapPin },
+            ].map(t => (
+              <button
+                key={t.value}
+                onClick={() => setTarget(t.value as SendTarget)}
+                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-sm font-medium transition-colors ${
+                  target === t.value
+                    ? 'border-blue-600 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                }`}
+              >
+                <t.icon size={18} />
+                {t.label}
+              </button>
+            ))}
           </div>
 
-          {/* Form */}
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
-
-            {/* Student Select */}
-            {tab === 'single' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">اختر الطالب</label>
-                <input
-                  type="text"
-                  placeholder="بحث بالاسم أو الهاتف..."
-                  value={studentSearch}
-                  onChange={e => setStudentSearch(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
-                />
-                <select
-                  value={selectedStudent}
-                  onChange={e => setSelectedStudent(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">-- اختر طالب --</option>
-                  {filteredStudents.map(s => (
-                    <option key={s.id} value={s.id}>{s.name} — {s.phone}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">عنوان الإشعار</label>
-              <input
-                type="text"
-                value={form.title}
-                onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
-                placeholder="مثال: تذكير بالدراسة 🔥"
+          {/* Province Select */}
+          {target === 'province' && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">اختر المحافظة</label>
+              <select
+                value={province}
+                onChange={e => setProvince(e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              >
+                {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
             </div>
+          )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">نص الإشعار</label>
-              <textarea
-                value={form.body}
-                onChange={e => setForm(p => ({ ...p, body: e.target.value }))}
-                placeholder="اكتب نص الإشعار هنا..."
-                rows={4}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              />
-            </div>
+          {/* Title */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">عنوان الإشعار</label>
+            <input
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="مثال: امتحانات جديدة متوفرة!"
+              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
+          {/* Body */}
+          <div className="mb-5">
+            <label className="block text-sm font-medium text-gray-700 mb-2">نص الإشعار</label>
+            <textarea
+              value={body}
+              onChange={e => setBody(e.target.value)}
+              placeholder="اكتب نص الإشعار هنا..."
+              rows={4}
+              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+          </div>
+
+          {/* Schedule Toggle */}
+          <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-xl">
+            <Clock size={18} className="text-gray-500" />
+            <span className="text-sm font-medium text-gray-700 flex-1">جدولة الإرسال</span>
             <button
-              onClick={tab === 'all' ? handleSendToAll : handleSendToUser}
-              disabled={sending}
-              className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50"
+              onClick={() => setIsScheduled(!isScheduled)}
+              className={`relative w-11 h-6 rounded-full transition-colors ${
+                isScheduled ? 'bg-blue-600' : 'bg-gray-300'
+              }`}
             >
-              {sending ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
-              ) : (
-                <>
-                  <Send size={18} />
-                  {tab === 'all' ? 'إرسال لجميع الطلاب' : 'إرسال للطالب'}
-                </>
-              )}
+              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                isScheduled ? 'right-1' : 'left-1'
+              }`} />
             </button>
           </div>
 
-          {/* Quick Messages */}
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <h3 className="font-medium text-gray-900 mb-3">رسائل سريعة</h3>
-            <div className="space-y-2">
-              {quickMessages.map((msg, i) => (
-                <button
-                  key={i}
-                  onClick={() => setForm({ title: msg.title, body: msg.body })}
-                  className="w-full text-right p-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors"
-                >
-                  <p className="font-medium text-gray-900 text-sm">{msg.title}</p>
-                  <p className="text-gray-500 text-xs mt-1">{msg.body}</p>
-                </button>
-              ))}
+          {/* Schedule DateTime */}
+          {isScheduled && (
+            <div className="mb-5">
+              <label className="block text-sm font-medium text-gray-700 mb-2">وقت الإرسال</label>
+              <input
+                type="datetime-local"
+                value={scheduledAt}
+                onChange={e => setScheduledAt(e.target.value)}
+                min={new Date().toISOString().slice(0, 16)}
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
-          </div>
+          )}
+
+          {/* Preview */}
+          {(title || body) && (
+            <div className="mb-5 p-4 bg-gray-900 rounded-2xl">
+              <p className="text-xs text-gray-400 mb-2">معاينة الإشعار</p>
+              <div className="bg-white rounded-xl p-3 flex items-start gap-3">
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex-shrink-0 flex items-center justify-center">
+                  <Bell size={14} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-900">{title || 'عنوان الإشعار'}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{body || 'نص الإشعار'}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Send Button */}
+          <button
+            onClick={handleSend}
+            disabled={sending}
+            className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {sending ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+            ) : (
+              <>
+                {isScheduled ? <Clock size={18} /> : <Send size={18} />}
+                {isScheduled ? 'جدولة الإشعار' : 'إرسال الآن'}
+              </>
+            )}
+          </button>
         </div>
 
         {/* History */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-          <div className="p-5 border-b border-gray-100">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2">
-              <Clock size={18} />
-              سجل الإشعارات
-            </h2>
-          </div>
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <h2 className="text-lg font-bold text-gray-900 mb-5 flex items-center gap-2">
+            <History size={20} className="text-blue-600" />
+            سجل الإشعارات
+          </h2>
 
-          {loading ? (
-            <div className="flex justify-center py-20">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+          {loadingHistory ? (
+            <div className="flex justify-center py-10">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
             </div>
-          ) : notifications.length === 0 ? (
-            <div className="text-center py-20 text-gray-400">
-              <Bell size={48} className="mx-auto mb-3 opacity-30" />
-              <p>لا يوجد إشعارات مرسلة</p>
+          ) : history.length === 0 ? (
+            <div className="text-center py-10 text-gray-400">
+              <Bell size={40} className="mx-auto mb-3 opacity-30" />
+              <p>لا توجد إشعارات مرسلة</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-50 max-h-[600px] overflow-y-auto">
-              {notifications.map(n => (
-                <div key={n.id} className="p-4 hover:bg-gray-50">
-                  <div className="flex items-start justify-between">
+            <div className="space-y-3 max-h-[600px] overflow-y-auto">
+              {history.map((notif: any) => (
+                <div key={notif.id} className="border border-gray-100 rounded-xl p-4 hover:bg-gray-50">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900 text-sm">{n.title}</p>
-                      <p className="text-gray-500 text-xs mt-1">{n.body}</p>
-                      <div className="flex items-center gap-3 mt-2">
-                        <span className="text-xs text-gray-400">
-                          {new Date(n.sentAt).toLocaleDateString('ar-IQ')}
-                        </span>
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                          وصل لـ {n.totalSent} طالب
-                        </span>
-                      </div>
+                      <p className="font-medium text-gray-900 text-sm">{notif.title}</p>
+                      <p className="text-gray-500 text-xs mt-1">{notif.body}</p>
                     </div>
+                    <span className="bg-blue-50 text-blue-600 text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap">
+                      {notif.totalSent} مستلم
+                    </span>
                   </div>
+                  <p className="text-gray-400 text-xs mt-2">
+                    {new Date(notif.sentAt).toLocaleDateString('ar-IQ')} — {new Date(notif.sentAt).toLocaleTimeString('ar-IQ')}
+                  </p>
                 </div>
               ))}
             </div>
