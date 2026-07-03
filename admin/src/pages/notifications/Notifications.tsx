@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../utils/api';
-import { Bell, Send, Users, CreditCard, MapPin, Clock, History } from 'lucide-react';
+import { Bell, Send, Users, CreditCard, MapPin, Clock, History, Search, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const PROVINCES = [
@@ -10,7 +10,7 @@ const PROVINCES = [
   'كركوك', 'السليمانية', 'دهوك',
 ];
 
-type SendTarget = 'all' | 'subscribed' | 'province';
+type SendTarget = 'all' | 'subscribed' | 'province' | 'user';
 
 export default function NotificationsPage() {
   const [title, setTitle] = useState('');
@@ -22,6 +22,12 @@ export default function NotificationsPage() {
   const [sending, setSending] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
+
+  // بحث الطالب
+  const [userSearch, setUserSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => { loadHistory(); }, []);
 
@@ -35,9 +41,25 @@ export default function NotificationsPage() {
     }
   }
 
+  async function searchUsers(q: string) {
+    if (!q.trim()) { setSearchResults([]); return; }
+    setSearching(true);
+    try {
+      const res = await api.get(`/users/admin/users?search=${q}&limit=5`);
+      setSearchResults(res.data.data);
+    } finally {
+      setSearching(false);
+    }
+  }
+
   async function handleSend() {
     if (!title.trim() || !body.trim()) {
       toast.error('العنوان والنص مطلوبان');
+      return;
+    }
+
+    if (target === 'user' && !selectedUser) {
+      toast.error('اختر طالباً');
       return;
     }
 
@@ -49,10 +71,9 @@ export default function NotificationsPage() {
     setSending(true);
     try {
       if (isScheduled) {
-        // جدولة
         await api.post('/notifications/admin/schedule', {
           title, body, scheduledAt,
-          target,
+          target: target === 'user' ? 'all' : target,
           province: target === 'province' ? province : undefined,
         });
         toast.success('تمت جدولة الإشعار بنجاح');
@@ -65,12 +86,20 @@ export default function NotificationsPage() {
       } else if (target === 'province') {
         await api.post('/notifications/admin/send-to-province', { title, body, province });
         toast.success(`تم إرسال الإشعار لطلاب ${province}`);
+      } else if (target === 'user' && selectedUser) {
+        await api.post('/notifications/admin/send-to-user', {
+          userId: selectedUser.id, title, body,
+        });
+        toast.success(`تم إرسال الإشعار لـ ${selectedUser.name}`);
       }
 
       setTitle('');
       setBody('');
       setScheduledAt('');
       setIsScheduled(false);
+      setSelectedUser(null);
+      setUserSearch('');
+      setSearchResults([]);
       await loadHistory();
     } catch {
       toast.error('حدث خطأ في الإرسال');
@@ -79,9 +108,15 @@ export default function NotificationsPage() {
     }
   }
 
+  const targets = [
+    { value: 'all', label: 'الجميع', icon: Users },
+    { value: 'subscribed', label: 'المشتركون', icon: CreditCard },
+    { value: 'province', label: 'محافظة', icon: MapPin },
+    { value: 'user', label: 'طالب محدد', icon: User },
+  ];
+
   return (
     <div className="p-6" dir="rtl">
-      {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">الإشعارات</h1>
         <p className="text-sm text-gray-500 mt-1">إرسال إشعارات للطلاب</p>
@@ -98,22 +133,18 @@ export default function NotificationsPage() {
 
           {/* Target Selection */}
           <p className="text-sm font-medium text-gray-700 mb-3">إرسال إلى</p>
-          <div className="grid grid-cols-3 gap-2 mb-5">
-            {[
-              { value: 'all', label: 'الجميع', icon: Users },
-              { value: 'subscribed', label: 'المشتركون', icon: CreditCard },
-              { value: 'province', label: 'محافظة', icon: MapPin },
-            ].map(t => (
+          <div className="grid grid-cols-2 gap-2 mb-5">
+            {targets.map(t => (
               <button
                 key={t.value}
-                onClick={() => setTarget(t.value as SendTarget)}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-sm font-medium transition-colors ${
+                onClick={() => { setTarget(t.value as SendTarget); setSelectedUser(null); setUserSearch(''); setSearchResults([]); }}
+                className={`flex items-center gap-2 p-3 rounded-xl border-2 text-sm font-medium transition-colors ${
                   target === t.value
                     ? 'border-blue-600 bg-blue-50 text-blue-700'
                     : 'border-gray-200 text-gray-600 hover:border-gray-300'
                 }`}
               >
-                <t.icon size={18} />
+                <t.icon size={16} />
                 {t.label}
               </button>
             ))}
@@ -130,6 +161,67 @@ export default function NotificationsPage() {
               >
                 {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
+            </div>
+          )}
+
+          {/* User Search */}
+          {target === 'user' && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">ابحث عن الطالب</label>
+              {selectedUser ? (
+                <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                      {selectedUser.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{selectedUser.name}</p>
+                      <p className="text-xs text-gray-500">{selectedUser.phone}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { setSelectedUser(null); setUserSearch(''); }}
+                    className="text-xs text-red-500 hover:text-red-700"
+                  >
+                    تغيير
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  <input
+                    type="text"
+                    value={userSearch}
+                    onChange={e => { setUserSearch(e.target.value); searchUsers(e.target.value); }}
+                    placeholder="ابحث بالاسم أو رقم الهاتف..."
+                    className="w-full border border-gray-300 rounded-xl px-4 py-2.5 pr-10 text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {searching && (
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+                    </div>
+                  )}
+                  {searchResults.length > 0 && (
+                    <div className="absolute top-full right-0 left-0 bg-white border border-gray-200 rounded-xl shadow-lg z-10 mt-1 overflow-hidden">
+                      {searchResults.map(user => (
+                        <button
+                          key={user.id}
+                          onClick={() => { setSelectedUser(user); setSearchResults([]); setUserSearch(''); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-right border-b border-gray-50 last:border-0"
+                        >
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xs font-bold">
+                            {user.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                            <p className="text-xs text-gray-500">{user.phone} — {user.province}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -158,23 +250,25 @@ export default function NotificationsPage() {
           </div>
 
           {/* Schedule Toggle */}
-          <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-xl">
-            <Clock size={18} className="text-gray-500" />
-            <span className="text-sm font-medium text-gray-700 flex-1">جدولة الإرسال</span>
-            <button
-              onClick={() => setIsScheduled(!isScheduled)}
-              className={`relative w-11 h-6 rounded-full transition-colors ${
-                isScheduled ? 'bg-blue-600' : 'bg-gray-300'
-              }`}
-            >
-              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                isScheduled ? 'right-1' : 'left-1'
-              }`} />
-            </button>
-          </div>
+          {target !== 'user' && (
+            <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-xl">
+              <Clock size={18} className="text-gray-500" />
+              <span className="text-sm font-medium text-gray-700 flex-1">جدولة الإرسال</span>
+              <button
+                onClick={() => setIsScheduled(!isScheduled)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${
+                  isScheduled ? 'bg-blue-600' : 'bg-gray-300'
+                }`}
+              >
+                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                  isScheduled ? 'right-1' : 'left-1'
+                }`} />
+              </button>
+            </div>
+          )}
 
           {/* Schedule DateTime */}
-          {isScheduled && (
+          {isScheduled && target !== 'user' && (
             <div className="mb-5">
               <label className="block text-sm font-medium text-gray-700 mb-2">وقت الإرسال</label>
               <input
