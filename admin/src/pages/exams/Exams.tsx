@@ -63,7 +63,7 @@ export default function ExamsPage() {
   async function loadExams() {
     setLoading(true);
     try {
-      const res = await api.get(`/exams/admin?subjectId=${selectedSubject}`);
+      const res = await api.get(`/exams/admin/all?subjectId=${selectedSubject}`);
       setExams(res.data.data);
     } finally {
       setLoading(false);
@@ -72,7 +72,7 @@ export default function ExamsPage() {
 
   async function loadQuestions() {
     if (!selectedExam) return;
-    const res = await api.get(`/exams/${selectedExam.id}/questions`);
+    const res = await api.get(`/exams/admin/${selectedExam.id}/questions`);
     setQuestions(res.data.data);
   }
 
@@ -131,10 +131,10 @@ export default function ExamsPage() {
       };
 
       if (editingExam) {
-        await api.put(`/exams/${editingExam.id}`, payload);
+        await api.put(`/exams/admin/${editingExam.id}`, payload);
         toast.success('تم تحديث الامتحان');
       } else {
-        await api.post('/exams', payload);
+        await api.post('/exams/admin', payload);
         toast.success('تم إضافة الامتحان');
       }
       setShowExamModal(false);
@@ -147,7 +147,7 @@ export default function ExamsPage() {
   async function handleDeleteExam(id: string) {
     if (!confirm('هل أنت متأكد من حذف هذا الامتحان؟')) return;
     try {
-      await api.delete(`/exams/${id}`);
+      await api.delete(`/exams/admin/${id}`);
       toast.success('تم حذف الامتحان');
       if (selectedExam?.id === id) setSelectedExam(null);
       await loadExams();
@@ -170,10 +170,10 @@ export default function ExamsPage() {
       };
 
       if (editingQuestion) {
-        await api.put(`/exams/questions/${editingQuestion.id}`, payload);
+        await api.put(`/exams/admin/questions/${editingQuestion.id}`, payload);
         toast.success('تم تحديث السؤال');
       } else {
-        await api.post(`/exams/${selectedExam.id}/questions`, payload);
+        await api.post(`/exams/admin/${selectedExam.id}/questions`, payload);
         toast.success('تم إضافة السؤال');
       }
       setShowQuestionModal(false);
@@ -186,7 +186,7 @@ export default function ExamsPage() {
   async function handleDeleteQuestion(id: string) {
     if (!confirm('هل أنت متأكد من حذف هذا السؤال؟')) return;
     try {
-      await api.delete(`/exams/questions/${id}`);
+      await api.delete(`/exams/admin/questions/${id}`);
       toast.success('تم حذف السؤال');
       await loadQuestions();
     } catch {
