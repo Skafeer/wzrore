@@ -51,7 +51,7 @@ export default function ExamsPage() {
   useEffect(() => { if (selectedExam) loadQuestions(); }, [selectedExam]);
 
   async function loadSubjects() {
-    const res = await api.get('/subjects/admin');
+    const res = await api.get('/subjects/admin/all');
     setSubjects(res.data.data);
   }
 
