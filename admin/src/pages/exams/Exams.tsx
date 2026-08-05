@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   getExams, createExam, updateExam, deleteExam,
   getQuestions, createQuestion, updateQuestion, deleteQuestion,
 } from '../../services/exam.service';
 import { getSubjects, getChapters, getTopics } from '../../services/subject.service';
 import type { Exam, Question, Subject, Chapter, Topic, RichBlock } from '../../types';
-import { Plus, Pencil, Trash2, ChevronLeft, FileText, Eye } from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronLeft, ChevronDown, FileText, Eye, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import RichEditor, { richBlocksToText } from '../../components/RichEditor';
 import 'katex/dist/katex.min.css';
@@ -26,18 +26,21 @@ export default function ExamsPage() {
   const [editExam, setEditExam] = useState<Exam | null>(null);
   const [editQuestion, setEditQuestion] = useState<Question | null>(null);
 
-  // Exam Form
+  // ═══ جديد: بحث + فلترة ═══
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterSubjectId, setFilterSubjectId] = useState('');
+  const [filterType, setFilterType] = useState('');
+  const [collapsedSubjects, setCollapsedSubjects] = useState<Record<string, boolean>>({});
+
   const [examForm, setExamForm] = useState({
     title: '', subjectId: '', type: 'WIZARI',
     chapterId: '', topicId: '', year: '', round: '', duration: '60',
   });
 
-  // Question Form
   const [questionForm, setQuestionForm] = useState({
     text: '', modelAnswer: '', degree: '10', aiNotes: '', order: '0',
   });
 
-  // ═══ جديد: حالة محرر LaTeX ═══
   const [useRichText, setUseRichText] = useState(false);
   const [richContent, setRichContent] = useState<RichBlock[]>([]);
   const [richModelAnswer, setRichModelAnswer] = useState<RichBlock[]>([]);
@@ -148,7 +151,6 @@ export default function ExamsPage() {
   function openAddQuestion() {
     setEditQuestion(null);
     setQuestionForm({ text: '', modelAnswer: '', degree: '10', aiNotes: '', order: '0' });
-    // ═══ جديد: تصفير محرر LaTeX ═══
     setUseRichText(false);
     setRichContent([]);
     setRichModelAnswer([]);
@@ -164,7 +166,6 @@ export default function ExamsPage() {
       aiNotes: q.aiNotes ?? '',
       order: q.order.toString(),
     });
-    // ═══ جديد: تحميل محتوى LaTeX إن وجد ═══
     if (q.richContent && q.richContent.length > 0) {
       setUseRichText(true);
       setRichContent(q.richContent);
@@ -178,7 +179,6 @@ export default function ExamsPage() {
   }
 
   async function handleSaveQuestion() {
-    // ═══ جديد: التحقق حسب نمط المحتوى ═══
     const finalText = useRichText ? richBlocksToText(richContent) : questionForm.text;
     const finalModelAnswer = useRichText ? richBlocksToText(richModelAnswer) : questionForm.modelAnswer;
 
@@ -188,14 +188,14 @@ export default function ExamsPage() {
     }
     try {
       const payload = {
-  text: finalText,
-  modelAnswer: finalModelAnswer,
-  degree: parseFloat(questionForm.degree),
-  aiNotes: questionForm.aiNotes || undefined,
-  order: parseInt(questionForm.order),
-  richContent: useRichText && richContent.length > 0 ? richContent : undefined,
-  richModelAnswer: useRichText && richModelAnswer.length > 0 ? richModelAnswer : undefined,
-};
+        text: finalText,
+        modelAnswer: finalModelAnswer,
+        degree: parseFloat(questionForm.degree),
+        aiNotes: questionForm.aiNotes || undefined,
+        order: parseInt(questionForm.order),
+        richContent: useRichText && richContent.length > 0 ? richContent : undefined,
+        richModelAnswer: useRichText && richModelAnswer.length > 0 ? richModelAnswer : undefined,
+      };
 
       if (editQuestion) {
         await updateQuestion(editQuestion.id, payload);
@@ -222,6 +222,33 @@ export default function ExamsPage() {
     }
   }
 
+  // ═══ جديد: تصفية + تجميع الامتحانات حسب المادة ═══
+  const filteredExams = useMemo(() => {
+    return exams.filter(exam => {
+      const matchesSearch = !searchQuery.trim() ||
+        exam.title.toLowerCase().includes(searchQuery.trim().toLowerCase());
+      const matchesSubject = !filterSubjectId || exam.subjectId === filterSubjectId;
+      const matchesType = !filterType || exam.type === filterType;
+      return matchesSearch && matchesSubject && matchesType;
+    });
+  }, [exams, searchQuery, filterSubjectId, filterType]);
+
+  const groupedExams = useMemo(() => {
+    const groups: Record<string, { subjectName: string; exams: Exam[] }> = {};
+    for (const exam of filteredExams) {
+      const key = exam.subjectId;
+      if (!groups[key]) {
+        groups[key] = { subjectName: exam.subject?.name ?? 'غير معروف', exams: [] };
+      }
+      groups[key].exams.push(exam);
+    }
+    return Object.entries(groups).sort((a, b) => a[1].subjectName.localeCompare(b[1].subjectName, 'ar'));
+  }, [filteredExams]);
+
+  function toggleSubjectCollapse(subjectId: string) {
+    setCollapsedSubjects(prev => ({ ...prev, [subjectId]: !prev[subjectId] }));
+  }
+
   return (
     <div className="p-6" dir="rtl">
       {/* Header */}
@@ -239,6 +266,9 @@ export default function ExamsPage() {
             {view === 'questions' && (
               <p className="text-sm text-gray-500">{questions.length} سؤال</p>
             )}
+            {view === 'exams' && (
+              <p className="text-sm text-gray-500">{filteredExams.length} من {exams.length} امتحان</p>
+            )}
           </div>
         </div>
         <button
@@ -250,74 +280,135 @@ export default function ExamsPage() {
         </button>
       </div>
 
-      {/* Exams Table */}
+      {/* ═══ جديد: بحث + فلترة (فقط في عرض الامتحانات) ═══ */}
+      {view === 'exams' && (
+        <div className="flex flex-wrap gap-3 mb-6">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="ابحث عن امتحان بالاسم..."
+              className="w-full border border-gray-300 rounded-xl pr-9 pl-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <select
+            value={filterSubjectId}
+            onChange={e => setFilterSubjectId(e.target.value)}
+            className="border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">كل المواد</option>
+            {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <select
+            value={filterType}
+            onChange={e => setFilterType(e.target.value)}
+            className="border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">كل الأنواع</option>
+            <option value="WIZARI">وزاري شامل</option>
+            <option value="CHAPTER">فصل محدد</option>
+          </select>
+          {(searchQuery || filterSubjectId || filterType) && (
+            <button
+              onClick={() => { setSearchQuery(''); setFilterSubjectId(''); setFilterType(''); }}
+              className="px-4 py-2.5 text-sm text-gray-500 hover:text-red-600"
+            >
+              مسح الفلاتر
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Exams grouped by Subject */}
       {loading ? (
         <div className="flex justify-center py-20">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
         </div>
       ) : view === 'exams' ? (
-        exams.length === 0 ? (
+        groupedExams.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
             <FileText size={48} className="mx-auto mb-3 opacity-30" />
-            <p>لا توجد امتحانات بعد</p>
+            <p>لا توجد امتحانات مطابقة</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="text-right px-6 py-4 font-medium text-gray-600">العنوان</th>
-                  <th className="text-right px-6 py-4 font-medium text-gray-600">المادة</th>
-                  <th className="text-right px-6 py-4 font-medium text-gray-600">النوع</th>
-                  <th className="text-right px-6 py-4 font-medium text-gray-600">الأسئلة</th>
-                  <th className="text-right px-6 py-4 font-medium text-gray-600">المدة</th>
-                  <th className="text-right px-6 py-4 font-medium text-gray-600">الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {exams.map(exam => (
-                  <tr key={exam.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium text-gray-900">{exam.title}</td>
-                    <td className="px-6 py-4 text-gray-600">{exam.subject?.name}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        exam.type === 'WIZARI'
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-purple-100 text-purple-700'
-                      }`}>
-                        {exam.type === 'WIZARI' ? 'وزاري' : 'فصل'}
-                        {exam.year && ` ${exam.year}`}
-                        {exam.round && ` د${exam.round}`}
+          <div className="space-y-6">
+            {groupedExams.map(([subjectId, group]) => {
+              const isCollapsed = collapsedSubjects[subjectId];
+              return (
+                <div key={subjectId} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <button
+                    onClick={() => toggleSubjectCollapse(subjectId)}
+                    className="w-full flex items-center justify-between px-6 py-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-gray-900">{group.subjectName}</span>
+                      <span className="text-xs text-gray-500 bg-white px-2 py-0.5 rounded-full border border-gray-200">
+                        {group.exams.length} امتحان
                       </span>
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">{exam._count?.questions ?? 0}</td>
-                    <td className="px-6 py-4 text-gray-600">{exam.duration} د</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => loadQuestions(exam)}
-                          className="p-2 hover:bg-green-50 text-green-600 rounded-lg"
-                        >
-                          <Eye size={16} />
-                        </button>
-                        <button
-                          onClick={() => openEditExam(exam)}
-                          className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteExam(exam.id)}
-                          className="p-2 hover:bg-red-50 text-red-600 rounded-lg"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                    {isCollapsed ? <ChevronDown size={18} className="text-gray-500" /> : <ChevronDown size={18} className="text-gray-500 rotate-180" />}
+                  </button>
+
+                  {!isCollapsed && (
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 border-b border-gray-100">
+                        <tr>
+                          <th className="text-right px-6 py-3 font-medium text-gray-600">العنوان</th>
+                          <th className="text-right px-6 py-3 font-medium text-gray-600">النوع</th>
+                          <th className="text-right px-6 py-3 font-medium text-gray-600">الأسئلة</th>
+                          <th className="text-right px-6 py-3 font-medium text-gray-600">المدة</th>
+                          <th className="text-right px-6 py-3 font-medium text-gray-600">الإجراءات</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {group.exams.map(exam => (
+                          <tr key={exam.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 font-medium text-gray-900">{exam.title}</td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                exam.type === 'WIZARI'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-purple-100 text-purple-700'
+                              }`}>
+                                {exam.type === 'WIZARI' ? 'وزاري' : 'فصل'}
+                                {exam.year && ` ${exam.year}`}
+                                {exam.round && ` د${exam.round}`}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-gray-600">{exam._count?.questions ?? 0}</td>
+                            <td className="px-6 py-4 text-gray-600">{exam.duration} د</td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => loadQuestions(exam)}
+                                  className="p-2 hover:bg-green-50 text-green-600 rounded-lg"
+                                >
+                                  <Eye size={16} />
+                                </button>
+                                <button
+                                  onClick={() => openEditExam(exam)}
+                                  className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg"
+                                >
+                                  <Pencil size={16} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteExam(exam.id)}
+                                  className="p-2 hover:bg-red-50 text-red-600 rounded-lg"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )
       ) : (
@@ -340,7 +431,6 @@ export default function ExamsPage() {
                       <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                         {q.degree} درجة
                       </span>
-                      {/* ═══ جديد: شارة LaTeX ═══ */}
                       {q.richContent && q.richContent.length > 0 && (
                         <span className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
                           LaTeX
@@ -515,7 +605,6 @@ export default function ExamsPage() {
             </h2>
             <div className="space-y-4">
 
-              {/* ═══ جديد: Toggle نمط المحتوى ═══ */}
               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
                 <span className="text-sm font-medium text-gray-700 flex-1">نمط المحتوى</span>
                 <div className="flex gap-2">
@@ -542,7 +631,6 @@ export default function ExamsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">نص السؤال</label>
-                {/* ═══ جديد: RichEditor أو textarea حسب النمط ═══ */}
                 {useRichText ? (
                   <RichEditor
                     value={richContent}
