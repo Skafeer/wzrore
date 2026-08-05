@@ -12,6 +12,7 @@ import { ExamResult, QuestionResult } from '../../types';
 import { useAuthStore } from '../../store/auth.store';
 import { MotionView, PressableScale } from '../../components/motion';
 import CustomAlert, { CustomAlertRef } from '../../components/CustomAlert';
+import RichTextDisplay from '../../components/RichTextDisplay';
 
 export default function ResultScreen() {
   const { sessionId, streakCurrent, streakBest, isNewBest, alreadyToday } = useLocalSearchParams<{
@@ -125,11 +126,10 @@ export default function ResultScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Score Card - مع شريط أصفر علوي مطابق لبطاقة ملخص الأداء */}
+        {/* Score Card */}
         <MotionView delay={80} style={[styles.scoreCard, { padding: rs(24), borderRadius: rs(20), marginBottom: rs(20) }]}>
-          {/* الشريط الأصفر العلوي (الهوية البصرية) */}
           <View style={[styles.scoreCardBorder, { height: rs(4), left: 0, right: 0, borderTopLeftRadius: rs(20), borderTopRightRadius: rs(20), backgroundColor: Colors.secondary }]} />
-          
+
           <Text style={[styles.examTitle, { fontSize: rs(16), marginTop: rs(16), marginBottom: rs(16) }]}>
             {result.examTitle}
           </Text>
@@ -196,7 +196,7 @@ export default function ResultScreen() {
         ))}
       </ScrollView>
 
-      {/* Streak Popup - زر أصفر ونص أزرق */}
+      {/* Streak Popup */}
       {showStreakPopup && (
         <View style={styles.popupOverlay}>
           <View style={[styles.popupBox, { padding: rs(28), borderRadius: rs(24), margin: rs(24) }]}>
@@ -221,7 +221,7 @@ export default function ResultScreen() {
         </View>
       )}
 
-      {/* New Best Popup - زر أصفر ونص أزرق */}
+      {/* New Best Popup */}
       {showBestPopup && (
         <View style={styles.popupOverlay}>
           <View style={[styles.popupBox, { padding: rs(28), borderRadius: rs(24), margin: rs(24) }]}>
@@ -287,9 +287,20 @@ function QuestionCard({
               {index + 1}
             </Text>
           </View>
-          <Text style={[styles.qText, { fontSize: rs(14), marginRight: rs(10), flex: 1 }]} numberOfLines={expanded ? undefined : 2}>
-            {question.questionText}
-          </Text>
+
+          {expanded && question.richContent && question.richContent.length > 0 ? (
+            <View style={{ marginRight: rs(10), flex: 1 }}>
+              <RichTextDisplay
+                richContent={question.richContent}
+                fallbackText={question.questionText}
+                fontSize={rs(14)}
+              />
+            </View>
+          ) : (
+            <Text style={[styles.qText, { fontSize: rs(14), marginRight: rs(10), flex: 1 }]} numberOfLines={expanded ? undefined : 2}>
+              {question.questionText}
+            </Text>
+          )}
         </View>
         <View style={styles.qHeaderRight}>
           <Text style={[styles.qScore, { fontSize: rs(15), color: scoreColor }]}>
@@ -341,11 +352,11 @@ function QuestionCard({
             <Text style={[styles.modelSectionTitle, { fontSize: rs(13), marginBottom: rs(8) }]}>
               الإجابة النموذجية
             </Text>
-            <View>
-              <Text selectable style={[styles.modelText, { fontSize: rs(14), writingDirection: 'rtl' }]}>
-                {formatAnswer(question.modelAnswer)}
-              </Text>
-            </View>
+            <RichTextDisplay
+              richContent={question.richModelAnswer}
+              fallbackText={formatAnswer(question.modelAnswer)}
+              fontSize={rs(14)}
+            />
             {question.modelImages?.length > 0 && (
               <View style={{ marginTop: rs(10) }}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -386,24 +397,23 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerTitle: { color: Colors.text.primary, fontFamily: 'Tajawal_800ExtraBold' },
   iconBox: { justifyContent: 'center', alignItems: 'center' },
-  
-  // بطاقة النتيجة (محسنة بتوزيع ألوان أوضح)
-  scoreCard: { 
-    backgroundColor: Colors.white, 
-    alignItems: 'center', 
-    borderWidth: 1, 
-    borderColor: Colors.border, 
-    shadowColor: Colors.shadow, 
-    shadowOpacity: 0.02, 
-    shadowRadius: 16, 
-    shadowOffset: { width: 0, height: 4 }, 
+
+  scoreCard: {
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    shadowColor: Colors.shadow,
+    shadowOpacity: 0.02,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
-    overflow: 'hidden', // ضروري لكي لا يخرج الشريط الأصفر عن الحواف الدائرية
+    overflow: 'hidden',
   },
-  scoreCardBorder: { 
-    position: 'absolute', 
-    top: 0, 
-    backgroundColor: Colors.secondary, // هوية بصرية صفراء قوية
+  scoreCardBorder: {
+    position: 'absolute',
+    top: 0,
+    backgroundColor: Colors.secondary,
   },
   examTitle: { color: Colors.text.secondary, textAlign: 'center', fontFamily: 'Tajawal_500Medium' },
   circleScore: { justifyContent: 'center', alignItems: 'center' },
@@ -412,7 +422,7 @@ const styles = StyleSheet.create({
   scorePct: { fontFamily: 'Tajawal_700Bold' },
   scoreLabel: { color: Colors.text.secondary, fontFamily: 'Tajawal_500Medium' },
   scoreDate: { color: Colors.text.disabled, fontFamily: 'Tajawal_500Medium' },
-  
+
   statsRow: { flexDirection: 'row' },
   statsRowMobile: { flexDirection: 'column' },
   statCard: { flex: 1, backgroundColor: Colors.white, alignItems: 'center', borderWidth: 1, borderColor: Colors.border, shadowColor: Colors.shadow, shadowOpacity: 0.02, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },

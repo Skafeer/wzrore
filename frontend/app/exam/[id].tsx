@@ -14,6 +14,7 @@ import { useAuthStore } from '../../store/auth.store';
 import { Question } from '../../types';
 import { MotionView, PressableScale } from '../../components/motion';
 import CustomAlert, { CustomAlertRef } from '../../components/CustomAlert';
+import RichTextDisplay from '../../components/RichTextDisplay';
 
 interface AnswerData {
   text: string;
@@ -75,10 +76,8 @@ export default function ExamScreen() {
       };
       const data = error?.response?.data;
 
-      // ✅ التحقق من البيانات القادمة من الخادم
       console.log('⚠️ خطأ من الخادم:', data);
 
-      // ✅ استخدام setTimeout لضمان أن الـ ref جاهز قبل العرض
       if (data?.requiresSubscription) {
         const nextRenewal = data.nextRenewal
           ? new Date(data.nextRenewal).toLocaleDateString('ar-IQ')
@@ -108,7 +107,7 @@ export default function ExamScreen() {
                 },
               ],
             });
-          }, 300); // ✅ تأخير بسيط لضمان ظهور المودال
+          }, 300);
         }
       } else {
         setTimeout(() => {
@@ -185,9 +184,9 @@ export default function ExamScreen() {
           await saveAnswer(sId, q.id, answer.text ?? '', answer.images);
         }
       }
-      
+
       const result = await submitExam(sId);
-      
+
       router.replace({
         pathname: `/result/${sId}`,
         params: {
@@ -278,7 +277,11 @@ export default function ExamScreen() {
         contentContainerStyle={{ paddingHorizontal: pagePadding, paddingVertical: rs(16) }}
       >
         <MotionView delay={80} style={[styles.questionBox, { padding: rs(16), borderRadius: rs(14), marginBottom: rs(16), backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.border, shadowColor: Colors.shadow, shadowOpacity: 0.02, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 }]}>
-          <Text style={[styles.questionText, { fontSize: rs(16), color: Colors.text.primary, fontFamily: 'Tajawal_500Medium', lineHeight: 26, textAlign: 'right' }]}>{currentQuestion?.text}</Text>
+          <RichTextDisplay
+            richContent={currentQuestion?.richContent}
+            fallbackText={currentQuestion?.text ?? ''}
+            fontSize={rs(16)}
+          />
         </MotionView>
 
         <Text style={[styles.answerLabel, { fontSize: rs(14), color: Colors.text.secondary, fontFamily: 'Tajawal_700Bold', marginBottom: rs(8) }]}>إجابتك</Text>
@@ -390,35 +393,35 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
   loadingText: { color: Colors.text.primary, fontFamily: 'Tajawal_700Bold' },
   loadingSubText: { color: Colors.text.secondary, fontFamily: 'Tajawal_500Medium' },
-  
+
   topBar: { backgroundColor: Colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   timerBox: { backgroundColor: '#FFF7E6' },
   timerText: { fontFamily: 'Tajawal_700Bold' },
   examTitleText: { fontFamily: 'Tajawal_700Bold' },
-  
+
   infoBar: { backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border },
   counterText: { fontFamily: 'Tajawal_500Medium' },
   degreeText: { fontFamily: 'Tajawal_700Bold' },
-  
+
   progressBar: { backgroundColor: Colors.border },
   progressFill: { backgroundColor: Colors.secondary },
-  
+
   questionBox: { backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.border, shadowColor: Colors.shadow, shadowOpacity: 0.02, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   questionText: { fontFamily: 'Tajawal_500Medium' },
   answerLabel: { fontFamily: 'Tajawal_700Bold' },
   answerContainer: { backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border },
   iconWrapper: { backgroundColor: Colors.primarySoft, justifyContent: 'center', alignItems: 'center' },
   answerInput: { fontFamily: 'Tajawal_500Medium' },
-  
+
   imageBtn: { backgroundColor: Colors.secondary },
   imageBtnText: { fontFamily: 'Tajawal_700Bold' },
   freeBadge: { backgroundColor: Colors.primary },
   freeBadgeText: { fontFamily: 'Tajawal_700Bold' },
   removeImg: { backgroundColor: Colors.white, borderRadius: 10 },
-  
+
   reportBtn: {  },
   reportText: { fontFamily: 'Tajawal_500Medium' },
-  
+
   navBar: { backgroundColor: Colors.white, borderTopWidth: 1, borderTopColor: Colors.border },
   navBtn: { backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.border },
   navBtnText: { fontFamily: 'Tajawal_700Bold' },

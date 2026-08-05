@@ -50,12 +50,20 @@ export interface Exam {
   _count: { questions: number };
 }
 
+export interface RichBlock {
+  id: string;
+  type: 'text' | 'latex';
+  content: string;
+}
+
 export interface Question {
   id: string;
   text: string;
   degree: number;
   order: number;
   modelImages: string[];
+  richContent?: RichBlock[];
+  richModelAnswer?: RichBlock[];
 }
 
 export interface ExamSession {
@@ -94,6 +102,8 @@ export interface QuestionResult {
   studentImages: string[];
   aiScore: number;
   aiFeedback: string;
+  richContent?: RichBlock[];
+  richModelAnswer?: RichBlock[];
 }
 
 export interface PerformanceSummary {
@@ -110,7 +120,6 @@ export interface LastExam {
   maxScore: number;
   submittedAt: string;
 }
-
 
 export interface SubmitExamResponse {
   sessionId: string;
