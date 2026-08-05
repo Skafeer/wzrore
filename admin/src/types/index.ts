@@ -67,6 +67,12 @@ export interface Exam {
   _count?: { questions: number; sessions: number };
 }
 
+export interface RichBlock {
+  id: string;
+  type: 'text' | 'latex';
+  content: string;
+}
+
 export interface Question {
   id: string;
   examId: string;
@@ -76,6 +82,8 @@ export interface Question {
   degree: number;
   aiNotes?: string;
   order: number;
+  richContent?: RichBlock[];
+  richModelAnswer?: RichBlock[];
 }
 
 export interface SubscriptionCode {

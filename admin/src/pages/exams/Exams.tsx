@@ -4,9 +4,11 @@ import {
   getQuestions, createQuestion, updateQuestion, deleteQuestion,
 } from '../../services/exam.service';
 import { getSubjects, getChapters, getTopics } from '../../services/subject.service';
-import type { Exam, Question, Subject, Chapter, Topic } from '../../types';
+import type { Exam, Question, Subject, Chapter, Topic, RichBlock } from '../../types';
 import { Plus, Pencil, Trash2, ChevronLeft, FileText, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
+import RichEditor, { richBlocksToText } from '../../components/RichEditor';
+import 'katex/dist/katex.min.css';
 
 type View = 'exams' | 'questions';
 
@@ -34,6 +36,11 @@ export default function ExamsPage() {
   const [questionForm, setQuestionForm] = useState({
     text: '', modelAnswer: '', degree: '10', aiNotes: '', order: '0',
   });
+
+  // ═══ جديد: حالة محرر LaTeX ═══
+  const [useRichText, setUseRichText] = useState(false);
+  const [richContent, setRichContent] = useState<RichBlock[]>([]);
+  const [richModelAnswer, setRichModelAnswer] = useState<RichBlock[]>([]);
 
   useEffect(() => {
     loadExams();
@@ -141,6 +148,10 @@ export default function ExamsPage() {
   function openAddQuestion() {
     setEditQuestion(null);
     setQuestionForm({ text: '', modelAnswer: '', degree: '10', aiNotes: '', order: '0' });
+    // ═══ جديد: تصفير محرر LaTeX ═══
+    setUseRichText(false);
+    setRichContent([]);
+    setRichModelAnswer([]);
     setShowQuestionModal(true);
   }
 
@@ -153,32 +164,44 @@ export default function ExamsPage() {
       aiNotes: q.aiNotes ?? '',
       order: q.order.toString(),
     });
+    // ═══ جديد: تحميل محتوى LaTeX إن وجد ═══
+    if (q.richContent && q.richContent.length > 0) {
+      setUseRichText(true);
+      setRichContent(q.richContent);
+      setRichModelAnswer(q.richModelAnswer ?? []);
+    } else {
+      setUseRichText(false);
+      setRichContent([]);
+      setRichModelAnswer([]);
+    }
     setShowQuestionModal(true);
   }
 
   async function handleSaveQuestion() {
-    if (!questionForm.text || !questionForm.modelAnswer || !questionForm.degree) {
+    // ═══ جديد: التحقق حسب نمط المحتوى ═══
+    const finalText = useRichText ? richBlocksToText(richContent) : questionForm.text;
+    const finalModelAnswer = useRichText ? richBlocksToText(richModelAnswer) : questionForm.modelAnswer;
+
+    if (!finalText || !finalModelAnswer || !questionForm.degree) {
       toast.error('السؤال والإجابة النموذجية والدرجة مطلوبة');
       return;
     }
     try {
+      const payload = {
+  text: finalText,
+  modelAnswer: finalModelAnswer,
+  degree: parseFloat(questionForm.degree),
+  aiNotes: questionForm.aiNotes || undefined,
+  order: parseInt(questionForm.order),
+  richContent: useRichText && richContent.length > 0 ? richContent : undefined,
+  richModelAnswer: useRichText && richModelAnswer.length > 0 ? richModelAnswer : undefined,
+};
+
       if (editQuestion) {
-        await updateQuestion(editQuestion.id, {
-          text: questionForm.text,
-          modelAnswer: questionForm.modelAnswer,
-          degree: parseFloat(questionForm.degree),
-          aiNotes: questionForm.aiNotes || undefined,
-          order: parseInt(questionForm.order),
-        });
+        await updateQuestion(editQuestion.id, payload);
         toast.success('تم تحديث السؤال');
       } else {
-        await createQuestion(selectedExam!.id, {
-          text: questionForm.text,
-          modelAnswer: questionForm.modelAnswer,
-          degree: parseFloat(questionForm.degree),
-          aiNotes: questionForm.aiNotes || undefined,
-          order: parseInt(questionForm.order),
-        });
+        await createQuestion(selectedExam!.id, payload);
         toast.success('تم إضافة السؤال');
       }
       await loadQuestions(selectedExam!);
@@ -317,6 +340,12 @@ export default function ExamsPage() {
                       <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                         {q.degree} درجة
                       </span>
+                      {/* ═══ جديد: شارة LaTeX ═══ */}
+                      {q.richContent && q.richContent.length > 0 && (
+                        <span className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
+                          LaTeX
+                        </span>
+                      )}
                     </div>
                     <p className="text-gray-900 font-medium mb-2 text-right">{q.text}</p>
                     <div className="bg-green-50 rounded-xl p-3">
@@ -485,26 +514,71 @@ export default function ExamsPage() {
               {editQuestion ? 'تعديل سؤال' : 'إضافة سؤال'}
             </h2>
             <div className="space-y-4">
+
+              {/* ═══ جديد: Toggle نمط المحتوى ═══ */}
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                <span className="text-sm font-medium text-gray-700 flex-1">نمط المحتوى</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setUseRichText(false)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      !useRichText ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                    }`}
+                  >
+                    نص عادي
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUseRichText(true)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      useRichText ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                    }`}
+                  >
+                    نص + معادلات
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">نص السؤال</label>
-                <textarea
-                  value={questionForm.text}
-                  onChange={e => setQuestionForm(p => ({ ...p, text: e.target.value }))}
-                  rows={3}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                  placeholder="اكتب السؤال هنا..."
-                />
+                {/* ═══ جديد: RichEditor أو textarea حسب النمط ═══ */}
+                {useRichText ? (
+                  <RichEditor
+                    value={richContent}
+                    onChange={setRichContent}
+                    placeholder="أضف نصاً أو معادلة للسؤال..."
+                  />
+                ) : (
+                  <textarea
+                    value={questionForm.text}
+                    onChange={e => setQuestionForm(p => ({ ...p, text: e.target.value }))}
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    placeholder="اكتب السؤال هنا..."
+                  />
+                )}
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">الإجابة النموذجية</label>
-                <textarea
-                  value={questionForm.modelAnswer}
-                  onChange={e => setQuestionForm(p => ({ ...p, modelAnswer: e.target.value }))}
-                  rows={4}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                  placeholder="اكتب الإجابة النموذجية..."
-                />
+                {useRichText ? (
+                  <RichEditor
+                    value={richModelAnswer}
+                    onChange={setRichModelAnswer}
+                    placeholder="أضف نصاً أو معادلة للإجابة..."
+                  />
+                ) : (
+                  <textarea
+                    value={questionForm.modelAnswer}
+                    onChange={e => setQuestionForm(p => ({ ...p, modelAnswer: e.target.value }))}
+                    rows={4}
+                    className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    placeholder="اكتب الإجابة النموذجية..."
+                  />
+                )}
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">الدرجة</label>
                 <input
