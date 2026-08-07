@@ -26,7 +26,6 @@ export default function ExamsPage() {
   const [editExam, setEditExam] = useState<Exam | null>(null);
   const [editQuestion, setEditQuestion] = useState<Question | null>(null);
 
-  // ═══ جديد: بحث + فلترة ═══
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSubjectId, setFilterSubjectId] = useState('');
   const [filterType, setFilterType] = useState('');
@@ -222,7 +221,6 @@ export default function ExamsPage() {
     }
   }
 
-  // ═══ جديد: تصفية + تجميع الامتحانات حسب المادة ═══
   const filteredExams = useMemo(() => {
     return exams.filter(exam => {
       const matchesSearch = !searchQuery.trim() ||
@@ -280,7 +278,6 @@ export default function ExamsPage() {
         </button>
       </div>
 
-      {/* ═══ جديد: بحث + فلترة (فقط في عرض الامتحانات) ═══ */}
       {view === 'exams' && (
         <div className="flex flex-wrap gap-3 mb-6">
           <div className="relative flex-1 min-w-[220px]">
@@ -321,7 +318,6 @@ export default function ExamsPage() {
         </div>
       )}
 
-      {/* Exams grouped by Subject */}
       {loading ? (
         <div className="flex justify-center py-20">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
@@ -412,7 +408,6 @@ export default function ExamsPage() {
           </div>
         )
       ) : (
-        // Questions View
         questions.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
             <FileText size={48} className="mx-auto mb-3 opacity-30" />
@@ -712,3 +707,4 @@ export default function ExamsPage() {
       )}
     </div>
   );
+}

@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { Asset } from 'expo-asset';
+import * as FileSystem from 'expo-file-system';
 import { Colors } from '../constants/colors';
 import { RichBlock } from '../types';
 
@@ -12,16 +14,58 @@ type Props = {
   fontFamily?: string;
 };
 
+// ═══ تحميل ملفات KaTeX المحلية مرة واحدة وتخزينها بالذاكرة ═══
+let cachedKatexJs: string | null = null;
+let cachedKatexCss: string | null = null;
+let loadingPromise: Promise<void> | null = null;
+
+async function loadKatexAssets(): Promise<void> {
+  if (cachedKatexJs && cachedKatexCss) return;
+  if (loadingPromise) return loadingPromise;
+
+  loadingPromise = (async () => {
+    const jsAsset = Asset.fromModule(require('../assets/katex/katex.min.js'));
+    const cssAsset = Asset.fromModule(require('../assets/katex/katex.min.css'));
+
+    await Promise.all([jsAsset.downloadAsync(), cssAsset.downloadAsync()]);
+
+    const [js, css] = await Promise.all([
+      FileSystem.readAsStringAsync(jsAsset.localUri!),
+      FileSystem.readAsStringAsync(cssAsset.localUri!),
+    ]);
+
+    cachedKatexJs = js;
+    cachedKatexCss = css;
+  })();
+
+  return loadingPromise;
+}
+
 function LatexBlock({ content, fontSize }: { content: string; fontSize: number }) {
   const [height, setHeight] = useState(fontSize * 2);
+  const [ready, setReady] = useState(!!(cachedKatexJs && cachedKatexCss));
+
+  useEffect(() => {
+    if (!ready) {
+      loadKatexAssets().then(() => setReady(true));
+    }
+  }, [ready]);
+
+  if (!ready || !cachedKatexJs || !cachedKatexCss) {
+    // أثناء التحميل — اعرض نص خام مؤقتاً بدل فراغ
+    return (
+      <Text style={{ fontSize, color: Colors.text.disabled, fontFamily: 'monospace', textAlign: 'right' }}>
+        {content}
+      </Text>
+    );
+  }
 
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+      <style>${cachedKatexCss}</style>
       <style>
         body {
           margin: 0;
@@ -36,6 +80,7 @@ function LatexBlock({ content, fontSize }: { content: string; fontSize: number }
     </head>
     <body>
       <div id="math"></div>
+      <script>${cachedKatexJs}</script>
       <script>
         try {
           katex.render(${JSON.stringify(content)}, document.getElementById('math'), {
@@ -51,7 +96,6 @@ function LatexBlock({ content, fontSize }: { content: string; fontSize: number }
     </html>
   `;
 
-  // على الويب — نعرض iframe مباشرة بدل WebView
   if (Platform.OS === 'web') {
     return (
       <View style={{ width: '100%', minHeight: fontSize * 2 }}>

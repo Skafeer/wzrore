@@ -215,7 +215,10 @@ export async function adminGetQuestions(req: Request, res: Response): Promise<vo
 export async function adminCreateQuestion(req: Request, res: Response): Promise<void> {
   try {
     const { examId } = req.params as { examId: string };
-    const { text, modelAnswer, modelImages, degree, aiNotes, order } = req.body;
+    const {
+      text, modelAnswer, modelImages, degree, aiNotes, order,
+      richContent, richModelAnswer,
+    } = req.body;
 
     if (!text || !modelAnswer || !degree) {
       res.status(400).json({ success: false, message: 'السؤال والإجابة النموذجية والدرجة مطلوبة' });
@@ -229,6 +232,8 @@ export async function adminCreateQuestion(req: Request, res: Response): Promise<
         degree: parseFloat(degree),
         aiNotes: aiNotes ?? null,
         order: order ?? 0,
+        richContent: richContent ?? undefined,
+        richModelAnswer: richModelAnswer ?? undefined,
       },
     });
 
@@ -242,11 +247,18 @@ export async function adminCreateQuestion(req: Request, res: Response): Promise<
 export async function adminUpdateQuestion(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params as { id: string };
-    const { text, modelAnswer, modelImages, degree, aiNotes, order } = req.body;
+    const {
+      text, modelAnswer, modelImages, degree, aiNotes, order,
+      richContent, richModelAnswer,
+    } = req.body;
 
     const question = await prisma.question.update({
       where: { id },
-      data: { text, modelAnswer, modelImages, degree, aiNotes, order },
+      data: {
+        text, modelAnswer, modelImages, degree, aiNotes, order,
+        richContent: richContent ?? null,
+        richModelAnswer: richModelAnswer ?? null,
+      },
     });
 
     res.json({ success: true, data: question });

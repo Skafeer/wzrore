@@ -39,7 +39,8 @@
           "sounds": []
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-asset"
     ],
     "scheme": "sawab",
     "experiments": {
