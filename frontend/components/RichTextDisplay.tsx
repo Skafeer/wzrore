@@ -24,7 +24,7 @@ async function loadKatexAssets(): Promise<void> {
   if (loadingPromise) return loadingPromise;
 
   loadingPromise = (async () => {
-    const jsAsset = Asset.fromModule(require('../assets/katex/katex.min.js'));
+    const jsAsset = Asset.fromModule(require('../assets/katex/katex.min.txt'));
     const cssAsset = Asset.fromModule(require('../assets/katex/katex.min.css'));
 
     await Promise.all([jsAsset.downloadAsync(), cssAsset.downloadAsync()]);
@@ -52,7 +52,6 @@ function LatexBlock({ content, fontSize }: { content: string; fontSize: number }
   }, [ready]);
 
   if (!ready || !cachedKatexJs || !cachedKatexCss) {
-    // أثناء التحميل — اعرض نص خام مؤقتاً بدل فراغ
     return (
       <Text style={{ fontSize, color: Colors.text.disabled, fontFamily: 'monospace', textAlign: 'right' }}>
         {content}
