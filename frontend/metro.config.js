@@ -2,6 +2,6 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
-config.resolver.assetExts.push('css', 'txt');
+config.resolver.assetExts.push('txt');
 
 module.exports = config;

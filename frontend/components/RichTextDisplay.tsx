@@ -24,8 +24,8 @@ async function loadKatexAssets(): Promise<void> {
   if (loadingPromise) return loadingPromise;
 
   loadingPromise = (async () => {
-    const jsAsset = Asset.fromModule(require('../assets/katex/katex.min.txt'));
-    const cssAsset = Asset.fromModule(require('../assets/katex/katex.min.css'));
+    const jsAsset = Asset.fromModule(require('../assets/katex/katexjs.txt'));
+    const cssAsset = Asset.fromModule(require('../assets/katex/katexcss.txt'));
 
     await Promise.all([jsAsset.downloadAsync(), cssAsset.downloadAsync()]);
 
