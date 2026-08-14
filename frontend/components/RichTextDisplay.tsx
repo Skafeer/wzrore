@@ -1,8 +1,4 @@
-import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
-import { WebView } from 'react-native-webview';
-import { Asset } from 'expo-asset';
-import * as FileSystem from 'expo-file-system';
 import { Colors } from '../constants/colors';
 import { RichBlock } from '../types';
 
@@ -14,123 +10,53 @@ type Props = {
   fontFamily?: string;
 };
 
-let cachedKatexJs: string | null = null;
-let cachedKatexCss: string | null = null;
-let loadingPromise: Promise<void> | null = null;
-
-async function loadKatexAssets(): Promise<void> {
-  if (cachedKatexJs && cachedKatexCss) return;
-  if (loadingPromise) return loadingPromise;
-
-  loadingPromise = (async () => {
-    const jsAsset = Asset.fromModule(require('../assets/katex/katexjs.txt'));
-    const cssAsset = Asset.fromModule(require('../assets/katex/katexcss.txt'));
-
-    await Promise.all([jsAsset.downloadAsync(), cssAsset.downloadAsync()]);
-
-    const [js, css] = await Promise.all([
-      FileSystem.readAsStringAsync(jsAsset.localUri!),
-      FileSystem.readAsStringAsync(cssAsset.localUri!),
-    ]);
-
-    cachedKatexJs = js;
-    cachedKatexCss = css;
-  })();
-
-  return loadingPromise;
-}
-
 function LatexBlock({ content, fontSize }: { content: string; fontSize: number }) {
-  const [height, setHeight] = useState(fontSize * 2);
-  const [ready, setReady] = useState(!!(cachedKatexJs && cachedKatexCss));
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!ready) {
-      loadKatexAssets()
-        .then(() => setReady(true))
-        .catch((err) => {
-          console.log('KaTeX load error:', err);
-          setLoadError(String(err?.message ?? err));
-        });
-    }
-  }, [ready]);
-
-  if (loadError) {
-    return (
-      <Text style={{ fontSize: fontSize * 0.7, color: 'red', textAlign: 'right' }}>
-        خطأ تحميل: {loadError}
-      </Text>
-    );
-  }
-
-  if (!ready || !cachedKatexJs || !cachedKatexCss) {
-    return (
-      <Text style={{ fontSize, color: Colors.text.disabled, fontFamily: 'monospace', textAlign: 'right' }}>
-        {content}
-      </Text>
-    );
-  }
-
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-      <style>${cachedKatexCss}</style>
-      <style>
-        body {
-          margin: 0;
-          padding: 8px;
-          display: flex;
-          justify-content: flex-end;
-          direction: rtl;
-          background: transparent;
-        }
-        #math { font-size: ${fontSize}px; }
-      </style>
-    </head>
-    <body>
-      <div id="math"></div>
-      <script>${cachedKatexJs}</script>
-      <script>
-        try {
-          katex.render(${JSON.stringify(content)}, document.getElementById('math'), {
-            throwOnError: false,
-            displayMode: false,
-          });
-          window.ReactNativeWebView.postMessage(document.body.scrollHeight.toString());
-        } catch (e) {
-          document.getElementById('math').innerText = ${JSON.stringify(content)};
-        }
-      </script>
-    </body>
-    </html>
-  `;
-
+  // على الويب — نستخدم iframe بسيط مع KaTeX من CDN (الويب دايماً متصل بالنت وقت الفتح)
   if (Platform.OS === 'web') {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+        <style>
+          body { margin: 0; padding: 6px; display: flex; justify-content: flex-end; direction: rtl; background: transparent; }
+          #math { font-size: ${fontSize}px; }
+        </style>
+      </head>
+      <body>
+        <div id="math"></div>
+        <script>
+          window.onload = function() {
+            try {
+              katex.render(${JSON.stringify(content)}, document.getElementById('math'), { throwOnError: false });
+            } catch (e) {
+              document.getElementById('math').innerText = ${JSON.stringify(content)};
+            }
+          };
+        </script>
+      </body>
+      </html>
+    `;
     return (
       <View style={{ width: '100%', minHeight: fontSize * 2 }}>
-        <iframe
-          srcDoc={html}
-          style={{ width: '100%', height: fontSize * 2.5, border: 'none' }}
-          title="latex"
-        />
+        <iframe srcDoc={html} style={{ width: '100%', height: fontSize * 2.5, border: 'none' }} title="latex" />
       </View>
     );
   }
 
+  // على الموبايل — react-native-katex (مكتبة جاهزة ومختبرة)
+  const Katex = require('react-native-katex').default;
+
   return (
-    <WebView
-      source={{ html }}
-      style={{ height, width: '100%', backgroundColor: 'transparent' }}
-      scrollEnabled={false}
-      onMessage={(e) => {
-        const h = parseInt(e.nativeEvent.data, 10);
-        if (h > 0) setHeight(h);
-      }}
-      originWhitelist={['*']}
-    />
+    <View style={styles.latexWrap}>
+      <Katex
+        expression={content}
+        displayMode={false}
+        throwOnError={false}
+        style={{ width: '100%', minHeight: fontSize * 2 }}
+      />
+    </View>
   );
 }
 
@@ -156,7 +82,7 @@ export default function RichTextDisplay({
       {richContent.map(block => {
         if (block.type === 'latex') {
           return (
-            <View key={block.id} style={styles.latexWrap}>
+            <View key={block.id} style={styles.blockWrap}>
               <LatexBlock content={block.content} fontSize={fontSize} />
             </View>
           );
@@ -182,5 +108,6 @@ export default function RichTextDisplay({
 
 const styles = StyleSheet.create({
   wrap: { width: '100%' },
-  latexWrap: { width: '100%', marginVertical: 4 },
+  blockWrap: { width: '100%', marginVertical: 4 },
+  latexWrap: { width: '100%', alignItems: 'flex-end' },
 });
