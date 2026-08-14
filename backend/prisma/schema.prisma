@@ -8,7 +8,7 @@ datasource db {
 }
 
 // ═══════════════════════════════
-//  ENUMS
+// ENUMS
 // ═══════════════════════════════
 
 enum Role {
@@ -44,33 +44,40 @@ enum ReportStatus {
   RESOLVED
 }
 
-// ═══════════════════════════════
-//  USER
-// ═══════════════════════════════
-
-model User {
-  id            String        @id @default(uuid())
-  name          String
-  phone         String        @unique
-  province      String
-  password      String
-  avatar        String?
-  role          Role          @default(STUDENT)
-  studyStreak   Int           @default(0)
-  bestStreak    Int           @default(0)
-  lastStudyDate DateTime?
-  streakFreeze  Int           @default(0)
-  fcmToken      String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  subscription  Subscription?
-  examSessions  ExamSession[]
-  reports       Report[]
+enum ReportCategory {
+  SPELLING
+  WRONG_ANSWER
+  UNCLEAR
+  OTHER
 }
 
 // ═══════════════════════════════
-//  ADMIN
+// USER
+// ═══════════════════════════════
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  phone         String    @unique
+  province      String
+  password      String
+  avatar        String?
+  role          Role      @default(STUDENT)
+  studyStreak   Int       @default(0)
+  bestStreak    Int       @default(0)
+  lastStudyDate DateTime?
+  streakFreeze  Int       @default(0)
+  fcmToken      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  subscription Subscription?
+  examSessions ExamSession[]
+  reports      Report[]
+}
+
+// ═══════════════════════════════
+// ADMIN
 // ═══════════════════════════════
 
 model Admin {
@@ -86,19 +93,19 @@ model Admin {
 }
 
 // ═══════════════════════════════
-//  SUBJECT & CHAPTER
+// SUBJECT & CHAPTER
 // ═══════════════════════════════
 
 model Subject {
-  id        String    @id @default(uuid())
-  name      String    @unique
-  isActive  Boolean   @default(true)
-  order     Int       @default(0)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id        String   @id @default(uuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  chapters  Chapter[]
-  exams     Exam[]
+  chapters Chapter[]
+  exams    Exam[]
 }
 
 model Chapter {
@@ -127,7 +134,7 @@ model Topic {
 }
 
 // ═══════════════════════════════
-//  EXAM & QUESTION
+// EXAM & QUESTION
 // ═══════════════════════════════
 
 model Exam {
@@ -155,9 +162,9 @@ model Question {
   id              String   @id @default(uuid())
   examId          String
   text            String
-  richContent     Json?    // للمواد التي تحتاج LaTeX — مصفوفة من { type: "text"|"latex", content: string }
+  richContent     Json?
   modelAnswer     String
-  richModelAnswer Json?    // نفس الفكرة للإجابة النموذجية
+  richModelAnswer Json?
   modelImages     String[] @default([])
   degree          Float
   aiNotes         String?
@@ -171,7 +178,7 @@ model Question {
 }
 
 // ═══════════════════════════════
-//  EXAM SESSION
+// EXAM SESSION
 // ═══════════════════════════════
 
 model ExamSession {
@@ -187,9 +194,13 @@ model ExamSession {
   updatedAt   DateTime  @updatedAt
 
   user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  exam           Exam            @relation(fields: [examId], references: [id])
+  exam           Exam            @relation(fields: [examId], references: [id], onDelete: Cascade)
   studentAnswers StudentAnswer[]
 }
+
+// ═══════════════════════════════
+// STUDENT ANSWER
+// ═══════════════════════════════
 
 model StudentAnswer {
   id           String   @id @default(uuid())
@@ -203,13 +214,13 @@ model StudentAnswer {
   updatedAt    DateTime @updatedAt
 
   session  ExamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  question Question    @relation(fields: [questionId], references: [id])
+  question Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, questionId])
 }
 
 // ═══════════════════════════════
-//  SUBSCRIPTION
+// SUBSCRIPTION
 // ═══════════════════════════════
 
 model Subscription {
@@ -238,7 +249,7 @@ model SubscriptionCode {
 }
 
 // ═══════════════════════════════
-//  LAUNCH PERIOD
+// LAUNCH PERIOD
 // ═══════════════════════════════
 
 model LaunchPeriod {
@@ -251,7 +262,7 @@ model LaunchPeriod {
 }
 
 // ═══════════════════════════════
-//  NOTIFICATIONS
+// NOTIFICATIONS
 // ═══════════════════════════════
 
 model Notification {
@@ -265,7 +276,7 @@ model Notification {
 }
 
 // ═══════════════════════════════
-//  REPORTS
+// REPORTS
 // ═══════════════════════════════
 
 model Report {
@@ -279,12 +290,5 @@ model Report {
   updatedAt  DateTime       @updatedAt
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  question Question @relation(fields: [questionId], references: [id])
-}
-
-enum ReportCategory {
-  SPELLING       // خطأ إملائي
-  WRONG_ANSWER   // خطأ في الإجابة
-  UNCLEAR        // سؤال غير واضح
-  OTHER          // أخرى
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 }
