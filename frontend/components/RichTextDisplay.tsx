@@ -14,7 +14,6 @@ type Props = {
   fontFamily?: string;
 };
 
-// ═══ تحميل ملفات KaTeX المحلية مرة واحدة وتخزينها بالذاكرة ═══
 let cachedKatexJs: string | null = null;
 let cachedKatexCss: string | null = null;
 let loadingPromise: Promise<void> | null = null;
@@ -44,12 +43,26 @@ async function loadKatexAssets(): Promise<void> {
 function LatexBlock({ content, fontSize }: { content: string; fontSize: number }) {
   const [height, setHeight] = useState(fontSize * 2);
   const [ready, setReady] = useState(!!(cachedKatexJs && cachedKatexCss));
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ready) {
-      loadKatexAssets().then(() => setReady(true));
+      loadKatexAssets()
+        .then(() => setReady(true))
+        .catch((err) => {
+          console.log('KaTeX load error:', err);
+          setLoadError(String(err?.message ?? err));
+        });
     }
   }, [ready]);
+
+  if (loadError) {
+    return (
+      <Text style={{ fontSize: fontSize * 0.7, color: 'red', textAlign: 'right' }}>
+        خطأ تحميل: {loadError}
+      </Text>
+    );
+  }
 
   if (!ready || !cachedKatexJs || !cachedKatexCss) {
     return (
