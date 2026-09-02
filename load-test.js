@@ -11,8 +11,8 @@ const QUESTION_ID = '9c9a1d32-22e4-4fce-b389-9755c791b117';
 
 export const options = {
   stages: [
-    { duration: '30s', target: 3 },   // بداية بـ 3 مستخدمين
-    { duration: '1m', target: 5 },    // زيادة إلى 5 مستخدمين
+    { duration: '30s', target: 5 },   // بداية بـ 3 مستخدمين
+    { duration: '1m', target: 10 },    // زيادة إلى 5 مستخدمين
     { duration: '30s', target: 0 },   // إنهاء
   ],
   thresholds: {
